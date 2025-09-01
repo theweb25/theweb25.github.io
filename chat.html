@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+        }
+        .chat-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: none; /* Removed box-shadow for full screen */
+            overflow: hidden;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db #f3f4f6;
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 20px;
+            border: 3px solid #f3f4f6;
+        }
+        .message {
+            max-width: 80%;
+            border-radius: 1.5rem;
+            padding: 0.75rem 1.25rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .message.self {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0.5rem;
+        }
+        .message.other {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+            border-bottom-left-radius: 0.5rem;
+        }
+        .online-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ef4444; /* red */
+        }
+        .online-indicator.online {
+            background-color: #22c55e; /* green */
+        }
+
+        /* Dark Mode Styles */
+        body.dark {
+            background-color: #1a1a1a;
+        }
+        body.dark .chat-container {
+            background-color: #2c2c2c;
+        }
+        body.dark .bg-gray-800 {
+            background-color: #1f2937;
+        }
+        body.dark .bg-gray-200 {
+            background-color: #3f3f3f;
+        }
+        body.dark .text-white {
+            color: #d1d5db;
+        }
+        body.dark .message.other {
+            background-color: #4b5563;
+            color: #d1d5db;
+        }
+        body.dark input, body.dark button {
+            background-color: #4b5563;
+            color: #d1d5db;
+            border: none;
+        }
+        body.dark input::placeholder {
+            color: #9ca3af;
+        }
+        body.dark button.bg-blue-500 {
+            background-color: #60a5fa;
+        }
+        body.dark button.bg-blue-500:hover {
+            background-color: #3b82f6;
+        }
+        body.dark .chat-messages::-webkit-scrollbar-track {
+            background: #2c2c2c;
+        }
+        body.dark .chat-messages::-webkit-scrollbar-thumb {
+            background-color: #6b7280;
+            border: 3px solid #2c2c2c;
+        }
+        .theme-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.5rem;
+            color: #fff;
+            line-height: 1;
+        }
+        .user-id {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div id="chatApp" class="chat-container bg-white">
+    <!-- Header -->
+    <div class="bg-gray-800 p-4 text-white flex items-center justify-between">
+        <h1 class="text-xl font-bold">Chat System</h1>
+        <div class="flex flex-col items-end space-y-1">
+            <div class="flex items-center space-x-2">
+                <span id="statusText" class="text-sm font-medium">Connecting...</span>
+                <div id="statusIndicator" class="online-indicator"></div>
+                <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle dark and light mode">
+                    <span id="theme-icon">☀️</span>
+                </button>
+            </div>
+            <span id="userIdDisplay" class="user-id"></span>
+        </div>
+    </div>
+
+    <!-- Message Display Area -->
+    <div id="messages" class="chat-messages p-4 flex flex-col space-y-4">
+        <!-- Messages will be added here by JavaScript -->
+    </div>
+
+    <!-- Message Input Area -->
+    <div class="bg-gray-200 p-4 flex space-x-2 items-center">
+        <input id="messageInput" type="text" placeholder="Type a message..." class="flex-grow rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        <button id="sendBtn" class="bg-blue-500 text-white rounded-lg px-4 py-2 font-semibold hover:bg-blue-600 transition-colors">Send</button>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.error('Firebase config is missing!');
+            document.getElementById('statusText').textContent = 'Error';
+            return;
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('theme-icon');
+
+        // Theme management logic
+        const applyTheme = (theme) => {
+            if (theme === 'dark') {
+                document.body.classList.add('dark');
+                themeIcon.textContent = '🌙';
+            } else {
+                document.body.classList.remove('dark');
+                themeIcon.textContent = '☀️';
+            }
+        };
+
+        const currentTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (currentTheme) {
+            applyTheme(currentTheme);
+        } else if (prefersDark) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            if (document.body.classList.contains('dark')) {
+                applyTheme('light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                applyTheme('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Firebase Auth State Listener
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                statusIndicator.classList.add('online');
+                statusText.textContent = 'Online';
+                userIdDisplay.textContent = `User ID: ${user.uid}`;
+                console.log('Signed in successfully with user ID:', user.uid);
+
+                // Set up real-time message listener
+                const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+                const q = query(messagesRef);
+                onSnapshot(q, (snapshot) => {
+                    messagesContainer.innerHTML = '';
+                    const messages = [];
+                    snapshot.forEach(doc => {
+                        messages.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Sort messages by timestamp
+                    messages.sort((a, b) => a.timestamp - b.timestamp);
+
+                    messages.forEach(msg => {
+                        const sender = msg.userId === user.uid ? 'self' : 'other';
+                        displayMessage(msg.text, sender);
+                    });
+                });
+
+            } else {
+                statusIndicator.classList.remove('online');
+                statusText.textContent = 'Offline';
+                userIdDisplay.textContent = 'User ID: N/A';
+                console.log('User is signed out.');
+            }
+        });
+
+        // Initial sign-in attempt
+        async function signIn() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error('Authentication Error:', error);
+                statusText.textContent = 'Auth Error';
+            }
+        }
+        signIn();
+
+        // Function to display messages in the chat
+        function displayMessage(text, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = text;
+            messageElement.classList.add('message', sender === 'self' ? 'self' : 'other');
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Handle sending a message
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (messageText === '') return;
+
+            const user = auth.currentUser;
+            if (!user) {
+                displayMessage('You are not connected. Please try again.', 'system');
+                return;
+            }
+
+            try {
+                const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+                await addDoc(messagesRef, {
+                    userId: user.uid,
+                    text: messageText,
+                    timestamp: Date.now()
+                });
+                messageInput.value = '';
+            } catch (error) {
+                console.error('Error adding document:', error);
+                displayMessage('Failed to send message. Check the console for details.', 'system');
+            }
+        }
+
+        // Send message on button click
+        sendBtn.addEventListener('click', sendMessage);
+
+        // Send message on Enter key press
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
