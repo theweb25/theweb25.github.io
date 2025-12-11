@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Slider Puzzle</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind to use the Inter font -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* DARK MODE STYLES */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #f3f4f6; /* Light text */
+            touch-action: manipulation; 
+        }
+        /* Custom styles for the canvas */
+        #puzzleCanvas {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.2); /* Darker shadow */
+            border: 4px solid #3b82f6; /* Blue border */
+            border-radius: 0.75rem; /* Rounded corners */
+            background-color: #374151; /* Darker gray background for blank space */
+        }
+
+        .button-primary {
+            /* Kept blue for contrast */
+            @apply px-4 py-3 font-semibold text-white rounded-lg shadow-md transition duration-150 ease-in-out transform hover:scale-105;
+        }
+        .file-input-container {
+            /* Adjusted borders for dark mode visibility */
+            @apply flex items-center justify-center p-4 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-blue-500 transition duration-150 ease-in-out;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Main Container -->
+    <div id="app" class="max-w-xl mx-auto flex flex-col items-center space-y-6">
+
+        <h1 class="text-3xl font-bold text-white mt-4 text-center">Image Sliding Puzzle</h1>
+        <p class="text-sm text-gray-300 text-center">Upload an image and select your difficulty below.</p>
+
+        <!-- Control Panel -->
+        <div id="controls" class="w-full flex flex-col space-y-4">
+            
+            <!-- Difficulty Selector -->
+            <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4 p-2 bg-gray-800 rounded-lg shadow-sm border border-gray-700">
+                <label for="difficultySelect" class="font-semibold text-gray-200 whitespace-nowrap">Choose Difficulty:</label>
+                <select id="difficultySelect" onchange="setDifficulty(this.value)" 
+                    class="w-full sm:w-auto p-2 border border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 bg-gray-700 text-white">
+                    <option value="3">Easy (3x3)</option>
+                    <option value="4" selected>Medium (4x4)</option>
+                    <option value="5">Hard (5x5)</option>
+                </select>
+            </div>
+
+            <!-- Image Upload Input -->
+            <label for="imageUpload" class="file-input-container">
+                <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                <span id="uploadText" class="text-gray-400">Click to select an image...</span>
+            </label>
+
+            <!-- Buttons and Counter -->
+            <div class="flex justify-between items-center w-full">
+                <button id="shuffleBtn" onclick="shuffleAndStart()" class="button-primary w-[30%] bg-blue-600 hover:bg-blue-500" disabled>
+                    Shuffle
+                </button>
+                <button id="solveBtn" onclick="startAISolve()" class="button-primary w-[30%] bg-purple-600 hover:bg-purple-500 mx-2" disabled>
+                    AI Solve
+                </button>
+                <div id="movesCounter" class="text-lg font-medium text-gray-200 w-[30%] text-right">
+                    Moves: 0
+                </div>
+            </div>
+
+            <!-- Message Box (replaces alert) -->
+            <div id="messageBox" class="hidden p-3 bg-green-900 text-green-300 border-l-4 border-green-500 rounded-r-lg font-medium">
+                <!-- Messages appear here -->
+            </div>
+        </div>
+
+        <!-- Puzzle Canvas (Hidden by default) -->
+        <div id="canvas-wrapper" class="w-full max-w-lg aspect-square hidden">
+            <canvas id="puzzleCanvas" class="w-full h-full"></canvas>
+        </div>
+
+    </div>
+
+    <!-- Firebase Imports and Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set log level for debugging
+        setLogLevel('error');
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            const auth = getAuth(app);
+
+            // Auth logic
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined') {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                            console.log("Signed in with custom token.");
+                        } else {
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously.");
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth error:", error);
+                    }
+                }
+            });
+        }
+    </script>
+
+    <!-- Puzzle Game Logic -->
+    <script>
+        const canvas = document.getElementById('puzzleCanvas');
+        const ctx = canvas.getContext('2d');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const solveBtn = document.getElementById('solveBtn'); // Reference to the new AI Solve button
+        const movesCounterEl = document.getElementById('movesCounter');
+        const messageBox = document.getElementById('messageBox');
+        const canvasWrapper = document.getElementById('canvas-wrapper'); 
+
+        let GRID_SIZE = 4;
+        let BLANK_TILE_INDEX = GRID_SIZE * GRID_SIZE - 1; 
+
+        let image = null;
+        let tiles = []; 
+        let tileWidth = 0;
+        let tileHeight = 0;
+        let blankIndex = BLANK_TILE_INDEX; 
+        let isSolved = true;
+        let moves = 0;
+        let isSolving = false; // Flag to prevent manual moves while AI is running
+
+        // --- Utility Functions ---
+
+        /**
+         * Displays a message in the message box, replacing the functionality of window.alert().
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.className = 'p-3 rounded-lg font-medium';
+            messageBox.classList.remove('hidden');
+
+            // Apply styling based on type
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-900', 'text-green-300', 'border-l-4', 'border-green-500');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-900', 'text-red-300', 'border-l-4', 'border-red-500');
+            } else { // info
+                messageBox.classList.add('bg-blue-900', 'text-blue-300', 'border-l-4', 'border-blue-500');
+            }
+
+            // Hide the message after 5 seconds
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        /**
+         * Fisher-Yates (Knuth) Shuffle algorithm.
+         * @param {Array<number>} array - The array to shuffle.
+         * @returns {Array<number>} The shuffled array.
+         */
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        /**
+         * Checks if the current arrangement of tiles is solvable (inversions).
+         * @param {Array<number>} arr - The tile array.
+         * @returns {boolean} True if solvable, false otherwise.
+         */
+        function isSolvable(arr) {
+            let inversions = 0;
+            const N = GRID_SIZE;
+            const nonBlankTiles = arr.filter(x => x !== BLANK_TILE_INDEX);
+
+            for (let i = 0; i < nonBlankTiles.length; i++) {
+                for (let j = i + 1; j < nonBlankTiles.length; j++) {
+                    if (nonBlankTiles[i] > nonBlankTiles[j]) {
+                        inversions++;
+                    }
+                }
+            }
+
+            const blankPos = arr.indexOf(BLANK_TILE_INDEX);
+            const blankRow = Math.floor(blankPos / N); // 0-indexed row
+            const rowFromBottom = N - blankRow; // 1-indexed row from bottom
+
+            // If N is Odd (3, 5): Solvable if Inversions is Even.
+            // If N is Even (4): Solvable if (Inversions + Row of blank from bottom) is Even.
+            if (N % 2 !== 0) { 
+                return inversions % 2 === 0;
+            } else { 
+                return (inversions + rowFromBottom) % 2 === 0;
+            }
+        }
+
+        // --- A* Solver Implementation ---
+
+        /**
+         * Calculates the Manhattan Distance heuristic for a given state.
+         * The Manhattan Distance is the sum of the horizontal and vertical distances 
+         * each tile is from its goal position.
+         * @param {Array<number>} state - The tile array state.
+         * @returns {number} The heuristic cost (h).
+         */
+        function calculateManhattanDistance(state) {
+            const N = GRID_SIZE;
+            let h = 0;
+            for (let i = 0; i < state.length; i++) {
+                const tile = state[i];
+                if (tile === BLANK_TILE_INDEX) continue; 
+
+                // Current position (i)
+                const currentCol = i % N;
+                const currentRow = Math.floor(i / N);
+
+                // Goal position (tile value)
+                const goalCol = tile % N;
+                const goalRow = Math.floor(tile / N);
+
+                h += Math.abs(currentCol - goalCol) + Math.abs(currentRow - goalRow);
+            }
+            return h;
+        }
+        
+        /**
+         * Finds the shortest solution path using the A* search algorithm.
+         * @param {Array<number>} initialState - The current tile arrangement.
+         * @returns {Array<number> | null} An array of tile indices to move, or null if no solution is found.
+         */
+        function findSolution(initialState) {
+            const N = GRID_SIZE;
+            // The key for the solved state
+            const goalStateKey = Array.from({ length: N * N }, (_, i) => i).join(',');
+            
+            // Node helper class for A* search
+            const Node = function(state, parent = null, moveIndex = null, g = 0) {
+                this.state = state;
+                this.parent = parent;
+                // moveIndex is the position of the tile that was moved (not the tile's value)
+                this.moveIndex = moveIndex; 
+                this.g = g; 
+                this.h = calculateManhattanDistance(state);
+                this.f = this.g + this.h; 
+                this.stateKey = state.join(',');
+            };
+
+            let openSet = [new Node(initialState)];
+            // Map to track the lowest known cost (g) to reach a specific state key
+            let visited = new Map(); 
+            visited.set(openSet[0].stateKey, openSet[0].g);
+
+            let maxNodes = 50000; 
+            let iterations = 0;
+
+            while (openSet.length > 0 && iterations < maxNodes) {
+                iterations++;
+
+                // Find the node with the lowest f cost (simulated Priority Queue)
+                openSet.sort((a, b) => a.f - b.f);
+                const current = openSet.shift(); 
+
+                if (current.stateKey === goalStateKey) {
+                    // Solution found! Reconstruct path.
+                    let path = [];
+                    let node = current;
+                    while (node.parent) {
+                        path.push(node.moveIndex);
+                        node = node.parent;
+                    }
+                    return path.reverse(); // Path is an array of tile positions to move
+                }
+
+                const blankIndex = current.state.indexOf(BLANK_TILE_INDEX);
+                const blankRow = Math.floor(blankIndex / N);
+                const blankCol = blankIndex % N;
+                
+                // Possible moves (neighbors of the blank tile)
+                const moves = [
+                    { dr: 0, dc: 1 },  // Right neighbor
+                    { dr: 0, dc: -1 }, // Left neighbor
+                    { dr: 1, dc: 0 },  // Down neighbor
+                    { dr: -1, dc: 0 }  // Up neighbor
+                ];
+
+                for (const move of moves) {
+                    const newRow = blankRow + move.dr;
+                    const newCol = blankCol + move.dc;
+                    const neighborIndex = newRow * N + newCol; // Position of the tile to swap
+
+                    // Check if move is within bounds
+                    if (newRow >= 0 && newRow < N && newCol >= 0 && newCol < N) {
+                        // Create new state by swapping the neighbor tile with the blank
+                        const newState = [...current.state];
+                        const tileToMove = newState[neighborIndex];
+                        
+                        newState[blankIndex] = tileToMove; // Move tile into blank space
+                        newState[neighborIndex] = BLANK_TILE_INDEX; // Blank space moves to neighborIndex
+
+                        const newNode = new Node(newState, current, neighborIndex, current.g + 1);
+
+                        // Check if we found a better or new path to this state
+                        const existingG = visited.get(newNode.stateKey);
+                        if (existingG === undefined || newNode.g < existingG) {
+                            visited.set(newNode.stateKey, newNode.g);
+                            openSet.push(newNode);
+                        }
+                    }
+                }
+            }
+
+            return null; // No solution found (e.g., maxNodes reached)
+        }
+
+        /**
+         * Animates the solution path found by the A* algorithm.
+         * @param {Array<number>} movesArray - The sequence of tile positions to click/move.
+         */
+        function executeSolution(movesArray) {
+            if (movesArray.length === 0) {
+                isSolving = false;
+                shuffleBtn.disabled = false;
+                checkWinCondition(); 
+                return;
+            }
+
+            const moveInterval = 150; // Delay in milliseconds for smooth animation
+            isSolving = true;
+            
+            const nextMoveIndex = movesArray.shift(); // The position of the tile to move
+
+            // The tile to be moved is at position 'nextMoveIndex'. 
+            // It will swap with the blank tile.
+            const currentBlank = tiles.indexOf(BLANK_TILE_INDEX);
+
+            // Perform the swap in the internal game state
+            [tiles[nextMoveIndex], tiles[currentBlank]] = [tiles[currentBlank], tiles[nextMoveIndex]];
+            blankIndex = nextMoveIndex;
+            
+            moves++;
+            movesCounterEl.textContent = `Moves: ${moves}`;
+            drawPuzzle();
+
+            // Continue the animation
+            setTimeout(() => executeSolution(movesArray), moveInterval);
+        }
+
+        /**
+         * Initiates the AI solver process.
+         */
+        function startAISolve() {
+            if (isSolved || isSolving || !image) return;
+
+            // Disable controls and show message
+            shuffleBtn.disabled = true;
+            solveBtn.disabled = true;
+            isSolving = true;
+            showMessage("AI Mode active. Calculating shortest path...", 'info');
+            
+            // Use setTimeout 0 to push the heavy calculation off the main thread briefly
+            setTimeout(() => {
+                const path = findSolution(tiles);
+                
+                if (path && path.length > 0) {
+                    showMessage(`Path found! Executing ${path.length} moves automatically.`, 'success');
+                    // Reset moves counter for the AI run if it wasn't already 0
+                    if (moves !== 0) moves = 0;
+                    executeSolution(path);
+                } else if (path && path.length === 0) {
+                    // Already solved
+                    showMessage("Puzzle is already solved! Click Shuffle to play again.", 'success');
+                    isSolving = false;
+                    shuffleBtn.disabled = false;
+                    solveBtn.disabled = true;
+                } else {
+                    // This should not happen if isSolvable is correct, but handles timeout/error
+                    showMessage("AI failed to find a solution. Try a different puzzle configuration.", 'error');
+                    isSolving = false;
+                    shuffleBtn.disabled = false;
+                    solveBtn.disabled = false; 
+                }
+            }, 0);
+        }
+
+        // --- Game Setup & Drawing ---
+
+        /**
+         * Sets the new grid size and re-initializes the game if an image is loaded.
+         * @param {string} sizeStr - The new grid size as a string ('3', '4', or '5').
+         */
+        function setDifficulty(sizeStr) {
+            const newSize = parseInt(sizeStr);
+            if (newSize === GRID_SIZE) return;
+            
+            GRID_SIZE = newSize;
+            showMessage(`Difficulty set to ${GRID_SIZE}x${GRID_SIZE}.`, 'info');
+
+            if (image) {
+                setCanvasDimensions();
+                initializeTiles();
+                drawPuzzle();
+                shuffleBtn.disabled = false;
+                solveBtn.disabled = false;
+            } else {
+                 // Redraw blank canvas with current difficulty text
+                canvas.width = 400; 
+                canvas.height = 400;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#d1d5db"; // gray-300
+                ctx.fillText(`Upload an image to start the ${GRID_SIZE}x${GRID_SIZE} puzzle`, canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        /**
+         * Sets up the initial state of the tiles array (solved state).
+         */
+        function initializeTiles() {
+            BLANK_TILE_INDEX = GRID_SIZE * GRID_SIZE - 1; 
+            
+            tiles = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
+            blankIndex = BLANK_TILE_INDEX;
+            isSolved = true;
+            moves = 0;
+            movesCounterEl.textContent = `Moves: ${moves}`;
+            shuffleBtn.disabled = false;
+            solveBtn.disabled = false; // Enable solve button on reset
+        }
+
+        /**
+         * Sets up the canvas dimensions based on the loaded image.
+         */
+        function setCanvasDimensions() {
+            const size = Math.min(image.width, image.height, 480); 
+            canvas.width = size;
+            canvas.height = size;
+            
+            tileWidth = canvas.width / GRID_SIZE;
+            tileHeight = canvas.height / GRID_SIZE;
+        }
+
+        /**
+         * Draws the current state of the puzzle on the canvas.
+         */
+        function drawPuzzle() {
+            if (!image) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const sourceTileW = image.width / GRID_SIZE;
+            const sourceTileH = image.height / GRID_SIZE;
+
+            for (let i = 0; i < tiles.length; i++) {
+                const tileIndex = tiles[i]; 
+
+                if (tileIndex === BLANK_TILE_INDEX) {
+                    continue; 
+                }
+
+                const destCol = i % GRID_SIZE;
+                const destRow = Math.floor(i / GRID_SIZE);
+                const destX = destCol * tileWidth;
+                const destY = destRow * tileHeight;
+
+                const sourceCol = tileIndex % GRID_SIZE;
+                const sourceRow = Math.floor(tileIndex / GRID_SIZE);
+                const sourceX = sourceCol * sourceTileW;
+                const sourceY = sourceRow * sourceTileH;
+
+                ctx.drawImage(
+                    image,
+                    sourceX, sourceY, sourceTileW, sourceTileH, 
+                    destX, destY, tileWidth, tileHeight
+                );
+
+                // Draw a border for clarity (Darker border for dark mode)
+                ctx.strokeStyle = '#f3f4f620'; 
+                ctx.lineWidth = 1;
+                ctx.strokeRect(destX, destY, tileWidth, tileHeight);
+            }
+        }
+
+        /**
+         * Handles the click/touch event on the canvas to move a tile.
+         */
+        function handleMove(event) {
+            if (isSolved || !image || isSolving) return; // Block moves if solved, no image, or AI is solving
+
+            if (event.touches) {
+                event.preventDefault();
+            }
+
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            if (event.touches) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            
+            const scaleX = canvas.width / rect.width;    
+            const scaleY = canvas.height / rect.height;  
+
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            const clickCol = Math.floor(x / tileWidth);
+            const clickRow = Math.floor(y / tileHeight);
+            const clickIndex = clickRow * GRID_SIZE + clickCol;
+
+            const blankCol = blankIndex % GRID_SIZE;
+            const blankRow = Math.floor(blankIndex / GRID_SIZE);
+
+            const dx = Math.abs(clickCol - blankCol);
+            const dy = Math.abs(clickRow - blankRow);
+
+            if (dx + dy === 1) {
+                [tiles[clickIndex], tiles[blankIndex]] = [tiles[blankIndex], tiles[clickIndex]];
+                
+                blankIndex = clickIndex;
+                moves++;
+                movesCounterEl.textContent = `Moves: ${moves}`;
+
+                drawPuzzle();
+                checkWinCondition();
+            }
+        }
+
+        /**
+         * Checks if the puzzle is solved and shows a message if it is.
+         */
+        function checkWinCondition() {
+            const solved = tiles.every((val, index) => val === index);
+            
+            if (solved && !isSolved) {
+                isSolved = true;
+                drawPuzzle(); 
+                showMessage(`🎉 Puzzle Solved! You did it in ${moves} moves! 🎉`, 'success');
+                shuffleBtn.disabled = false;
+                solveBtn.disabled = true; // Disable solve button when solved
+            }
+        }
+
+        /**
+         * Shuffles the tiles into a solvable configuration and starts the game.
+         */
+        function shuffleAndStart() {
+            if (!image) {
+                showMessage("Please upload an image first!", 'error');
+                return;
+            }
+            
+            let shuffledTiles = [];
+            do {
+                initializeTiles(); 
+                shuffledTiles = shuffleArray([...tiles]);
+            } while (!isSolvable(shuffledTiles));
+
+            tiles = shuffledTiles;
+            
+            blankIndex = tiles.indexOf(BLANK_TILE_INDEX);
+            
+            isSolved = false;
+            moves = 0;
+            movesCounterEl.textContent = `Moves: ${moves}`;
+            showMessage(`Puzzle shuffled into a ${GRID_SIZE}x${GRID_SIZE} grid! Time to solve it.`, 'info');
+
+            drawPuzzle();
+            shuffleBtn.disabled = true; // Disable until a move is made or AI is done
+            solveBtn.disabled = false;
+        }
+
+        // --- Event Handlers ---
+
+        /**
+         * Handles the image file upload.
+         */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('uploadText').textContent = `Loading: ${file.name}...`;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const newImage = new Image();
+                newImage.onload = function() {
+                    image = newImage;
+                    
+                    setCanvasDimensions();
+                    initializeTiles();
+                    drawPuzzle(); 
+                    
+                    // Enable buttons when image is ready
+                    shuffleBtn.disabled = false;
+                    solveBtn.disabled = false;
+                    
+                    document.getElementById('uploadText').textContent = `Image Loaded: ${file.name}. Ready to play!`;
+                    showMessage('Image loaded successfully. Click "Shuffle" to begin the game.', 'info');
+                    
+                    // Show the canvas wrapper when the image is ready
+                    canvasWrapper.classList.remove('hidden'); 
+                };
+                newImage.onerror = function() {
+                    showMessage('Error loading image. Please try a different file.', 'error');
+                    image = null;
+                };
+                newImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Handles window resizing to keep the canvas responsive.
+         */
+        function handleResize() {
+            if (image) {
+                drawPuzzle(); 
+            }
+        }
+        
+        // --- Initialization ---
+        
+        canvas.width = 400; 
+        canvas.height = 400;
+
+        canvas.addEventListener('click', handleMove);
+        canvas.addEventListener('touchstart', handleMove, { passive: false });
+        window.addEventListener('resize', handleResize);
+        
+        // Initial draw for empty canvas placeholder
+        ctx.font = "16px Inter";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#d1d5db"; // gray-300
+        ctx.fillText(`Upload an image to start the ${GRID_SIZE}x${GRID_SIZE} puzzle`, canvas.width / 2, canvas.height / 2);
+
+    </script>
+</body>
+</html>
+
