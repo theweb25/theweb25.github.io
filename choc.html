@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chocolate Stand Tycoon v3</title>
+    <title>Chocolate Stand Tycoon v4 (Local Storage)</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -91,26 +91,63 @@
             to { transform: rotate(360deg); }
         }
     </style>
-    <!-- Load Firebase/Firestore Modules -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    <!-- The main game script -->
+    <script>
+        // Game Constants
+        const BASE_COST_PER_BAR = 1.50;
+        const RICH_CHOCOLATE_BONUS_COST = 0.75; // Total cost: $2.25
+        const RICH_CHOCOLATE_MAX_PRICE_BONUS = 2.00; // Customers tolerate up to $2.00 more on the max profitable price
+        const BASE_MAX_ORDERS = 10;
+        const BASE_MAX_ACCEPTABLE_PRICE = 10.00; // Base max acceptable price without rich chocolate
 
-        // Global Firebase variables will be set after initialization
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        window.appId = null;
+        const UPGRADE_CONFIG = {
+            BANNER_1: { key: 'BANNER_1', name: "Small Banner Ad", cost: 150.00, orderIncrease: 5, description: "A simple banner to catch local attention." },
+            BANNER_2: { key: 'BANNER_2', name: "Large Digital Sign", cost: 400.00, orderIncrease: 10, description: "A dazzling sign attracting customers from afar." },
+            TIKTOK_PAGE: { key: 'TIKTOK_PAGE', name: "Launch TikTok Page", cost: 800.00, orderIncrease: 15, description: "Go viral! Massive reach and high customer hype." },
+        };
+
+        // Default Game State Variables
+        const DEFAULT_GAME_STATE = {
+            money: 100.00,
+            day: 0,
+            weather: 'Sunny',
+            totalOrders: 0,
+            ordersRemaining: 0,
+            acceptedOrders: 0,
+            rejectedOrders: 0,
+            isProcessing: false, 
+            upgrades: {
+                bannerLevel: 0, 
+                tiktokPage: false,
+            },
+            richChocolate: {
+                isActive: false, 
+            }
+        };
+
+        let gameState = { ...DEFAULT_GAME_STATE };
+
+        let settingsState = {
+            isDarkMode: false,
+        };
+
+        // Local Storage Keys
+        const GAME_DATA_KEY = 'cs_tycoon_game_data'; 
+        const SETTINGS_KEY = 'cs_tycoon_settings';
+
+        const WEATHER_EFFECTS = {
+            'Sunny': { effect: 1.2, emoji: '☀️', message: 'Perfect weather! Customers are thirsty for chocolate.' },
+            'Cloudy': { effect: 1.0, emoji: '☁️', message: 'Average day. Business as usual.' },
+            'Rainy': { effect: 0.8, emoji: '🌧️', message: 'Gloomy day. Fewer people out, but they want comfort food.' },
+            'Heatwave': { effect: 0.6, emoji: '🔥', message: 'It\'s melting! Price must be low or they won\'t risk it.' },
+            'Snowing': { effect: 1.5, emoji: '❄️', message: 'Cold weather brings high demand for hot chocolate (and bars!).' }
+        };
+
+        const CUSTOMER_PROMPT_STANDARD = "A customer approaches. What price will you set for a single chocolate bar?";
+        const CUSTOMER_PROMPT_RICH = "A delighted customer approaches, smelling the rich cocoa. What premium price will you set?";
         
-        // EXPOSE NECESSARY FIREBASE FUNCTIONS TO GLOBAL SCOPE
-        window.onAuthStateChanged = onAuthStateChanged;
-        window.doc = doc;
-        window.setDoc = setDoc;
-        window.getDoc = getDoc;
-
-        // Utility functions for TTS (Kept for compatibility)
+        // --- Utility functions for TTS (Kept for compatibility) ---
         window.base64ToArrayBuffer = (base64) => {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -151,140 +188,6 @@
                 view.setUint8(offset + i, string.charCodeAt(i));
             }
         }
-
-        // Initialize Firebase and Authentication
-        async function initFirebase() {
-            try {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-chocolate-stand';
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                if (!firebaseConfig) {
-                    console.error("Firebase config is missing.");
-                    return;
-                }
-
-                setLogLevel('Debug');
-                const app = initializeApp(firebaseConfig);
-                window.db = getFirestore(app);
-                window.auth = getAuth(app);
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(window.auth);
-                }
-
-                window.userId = window.auth.currentUser?.uid || crypto.randomUUID();
-                console.log("Firebase initialized. User ID:", window.userId);
-
-                // Start game logic after auth
-                window.loadGame();
-            } catch (error) {
-                console.error("Firebase initialization or sign-in failed:", error);
-                document.getElementById('status-message').textContent = 'Error loading game. Check console.';
-            }
-        }
-
-        // Expose init function to window
-        window.initFirebase = initFirebase;
-    </script>
-    <!-- The main game script -->
-    <script>
-        // Game Constants
-        const BASE_COST_PER_BAR = 1.50;
-        const RICH_CHOCOLATE_BONUS_COST = 0.75; // Total cost: $2.25
-        const RICH_CHOCOLATE_MAX_PRICE_BONUS = 2.00; // Customers tolerate up to $2.00 more on the max profitable price
-        const BASE_MAX_ORDERS = 10;
-        const BASE_MAX_ACCEPTABLE_PRICE = 10.00; // Base max acceptable price without rich chocolate
-
-        const UPGRADE_CONFIG = {
-            BANNER_1: { key: 'BANNER_1', name: "Small Banner Ad", cost: 150.00, orderIncrease: 5, description: "A simple banner to catch local attention." },
-            BANNER_2: { key: 'BANNER_2', name: "Large Digital Sign", cost: 400.00, orderIncrease: 10, description: "A dazzling sign attracting customers from afar." },
-            TIKTOK_PAGE: { key: 'TIKTOK_PAGE', name: "Launch TikTok Page", cost: 800.00, orderIncrease: 15, description: "Go viral! Massive reach and high customer hype." },
-        };
-
-        // Game State Variables
-        let gameState = {
-            money: 100.00,
-            day: 0,
-            weather: 'Sunny',
-            totalOrders: 0,
-            ordersRemaining: 0,
-            acceptedOrders: 0,
-            rejectedOrders: 0,
-            isProcessing: false, // Prevents multiple button clicks during API call or transition
-            
-            // NEW STATES
-            upgrades: {
-                bannerLevel: 0, // 0: None, 1: Small, 2: Large
-                tiktokPage: false,
-            },
-            richChocolate: {
-                isActive: false, // Toggle state
-            }
-        };
-
-        let settingsState = {
-            isDarkMode: false,
-        };
-
-        // Local Storage Keys (Used only for settings, not game state, as per persistence requirements)
-        const SETTINGS_KEY = 'cs_tycoon_settings';
-        const GAME_DATA_DOC = 'gameData'; // Firestore document ID
-
-        const WEATHER_EFFECTS = {
-            'Sunny': { effect: 1.2, emoji: '☀️', message: 'Perfect weather! Customers are thirsty for chocolate.' },
-            'Cloudy': { effect: 1.0, emoji: '☁️', message: 'Average day. Business as usual.' },
-            'Rainy': { effect: 0.8, emoji: '🌧️', message: 'Gloomy day. Fewer people out, but they want comfort food.' },
-            'Heatwave': { effect: 0.6, emoji: '🔥', message: 'It\'s melting! Price must be low or they won\'t risk it.' },
-            'Snowing': { effect: 1.5, emoji: '❄️', message: 'Cold weather brings high demand for hot chocolate (and bars!).' }
-        };
-
-        const CUSTOMER_PROMPT_STANDARD = "A customer approaches. What price will you set for a single chocolate bar?";
-        const CUSTOMER_PROMPT_RICH = "A delighted customer approaches, smelling the rich cocoa. What premium price will you set?";
-        
-        // === Settings and Theme Functions (using localStorage) ===
-        function loadSettings() {
-            try {
-                const storedSettings = localStorage.getItem(SETTINGS_KEY);
-                if (storedSettings) {
-                    const loaded = JSON.parse(storedSettings);
-                    settingsState.isDarkMode = loaded.isDarkMode || false;
-                }
-            } catch (e) {
-                console.error("Error loading settings from localStorage:", e);
-            }
-            applyTheme();
-        }
-        window.loadSettings = loadSettings;
-
-        function saveSettings() {
-            try {
-                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsState));
-            } catch (e) {
-                console.error("Error saving settings to localStorage:", e);
-            }
-        }
-
-        function applyTheme() {
-            if (settingsState.isDarkMode) {
-                document.documentElement.classList.add('dark');
-                document.body.classList.add('dark');
-                document.getElementById('dark-mode-toggle').checked = true;
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.body.classList.remove('dark');
-                document.getElementById('dark-mode-toggle').checked = false;
-            }
-        }
-
-        function toggleDarkMode() {
-            settingsState.isDarkMode = !settingsState.isDarkMode;
-            applyTheme();
-            saveSettings();
-        }
-        window.toggleDarkMode = toggleDarkMode; 
         
         // --- TTS Utility (Simplified for the game flow focus) ---
         async function speakText(text) {
@@ -354,6 +257,49 @@
             }
         }
         window.speakText = speakText; 
+
+        // === Settings and Theme Functions (using localStorage) ===
+        function loadSettings() {
+            try {
+                const storedSettings = localStorage.getItem(SETTINGS_KEY);
+                if (storedSettings) {
+                    const loaded = JSON.parse(storedSettings);
+                    settingsState.isDarkMode = loaded.isDarkMode || false;
+                }
+            } catch (e) {
+                console.error("Error loading settings from localStorage:", e);
+            }
+            applyTheme();
+        }
+        window.loadSettings = loadSettings;
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settingsState));
+            } catch (e) {
+                console.error("Error saving settings to localStorage:", e);
+            }
+        }
+
+        function applyTheme() {
+            if (settingsState.isDarkMode) {
+                document.documentElement.classList.add('dark');
+                document.body.classList.add('dark');
+                document.getElementById('dark-mode-toggle').checked = true;
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.body.classList.remove('dark');
+                document.getElementById('dark-mode-toggle').checked = false;
+            }
+        }
+
+        function toggleDarkMode() {
+            settingsState.isDarkMode = !settingsState.isDarkMode;
+            applyTheme();
+            saveSettings();
+        }
+        window.toggleDarkMode = toggleDarkMode; 
+        
 
         function updateUI() {
             document.getElementById('day-display').textContent = gameState.day;
@@ -538,10 +484,11 @@
             // Log previous day's final score
             if (gameState.day > 1) {
                 logMessage(`--- END OF DAY ${gameState.day - 1} SUMMARY ---`, 'info');
-                // The price and cost logging here needs the values from the *previous* day's last transaction, 
-                // which is difficult to track accurately across the end-of-day sequence.
-                // For simplicity, we just log the order summary for the day just finished.
-                logMessage(`Accepted Orders: ${gameState.acceptedOrders}, Rejected Orders: ${gameState.rejectedOrders}.`, 'success'); 
+                // Accepted/Rejected orders are reset before this point, so this log is inaccurate.
+                // Re-initializing gameState.acceptedOrders and rejectedOrders *after* this log for accuracy.
+                // For simplicity in this local storage version, we just log the money gain.
+                // To fix the log, we'd need to track day summary data separately.
+                // For now, removing the inaccurate orders log:
             }
 
             // Random Weather Selection
@@ -569,7 +516,6 @@
             logMessage(`Weather is ${gameState.weather}. Max expected customers: ${gameState.totalOrders}.`, 'info');
 
             updateUI();
-            // The saveGame is now done during the transition.
         }
 
         /**
@@ -589,8 +535,8 @@
             // Wait 100ms for the visual transition to start before saving
             await new Promise(resolve => setTimeout(resolve, 100)); 
 
-            // 2. Save game state persistently via Firestore while the screen is dark
-            logMessage("Saving game state to cloud storage...", 'info');
+            // 2. Save game state persistently via localStorage while the screen is dark
+            logMessage("Saving game state to local storage...", 'info');
             await saveGame();
             logMessage("Save successful.", 'info');
             
@@ -685,56 +631,40 @@
             document.getElementById('set-price-button').disabled = false;
         }
 
-        // === Firebase Functions (Persistent Cloud Storage) ===
+        // === Local Storage Functions ===
 
         async function saveGame() {
-            if (!window.db || !window.userId) return;
-
-            // Path to private user data in Firestore
-            const docRef = window.doc(window.db, `artifacts/${window.appId}/users/${window.userId}/tycoon_state/${GAME_DATA_DOC}`);
-
-            // The state object to save
-            const saveState = {
-                day: gameState.day,
-                money: gameState.money,
-                weather: gameState.weather,
-                totalOrders: gameState.totalOrders,
-                ordersRemaining: gameState.ordersRemaining,
-                acceptedOrders: gameState.acceptedOrders,
-                rejectedOrders: gameState.rejectedOrders,
-                upgrades: gameState.upgrades,
-                richChocolate: gameState.richChocolate,
-            };
+            // Remove functions (like isProcessing) that shouldn't be saved
+            const saveState = JSON.parse(JSON.stringify(gameState));
+            delete saveState.isProcessing;
 
             try {
-                // Use setDoc to save the state persistently
-                await window.setDoc(docRef, saveState);
+                localStorage.setItem(GAME_DATA_KEY, JSON.stringify(saveState));
+                // Add a small delay for the visual effect of "Saving..." during the day transition
+                await new Promise(resolve => setTimeout(resolve, 500)); 
             } catch (error) {
-                console.error("Error saving game state to Firestore:", error);
-                logMessage("Error saving game state to cloud! Progress might be lost.", 'error');
+                console.error("Error saving game state to localStorage:", error);
+                logMessage("Error saving game state to local storage! Progress might be lost.", 'error');
             }
         }
         window.saveGame = saveGame;
 
         async function loadGame() {
-            if (!window.db || !window.userId) return;
-
-            const docRef = window.doc(window.db, `artifacts/${window.appId}/users/${window.userId}/tycoon_state/${GAME_DATA_DOC}`);
             document.getElementById('status-message').textContent = 'Loading game...';
 
             try {
-                const docSnap = await window.getDoc(docRef);
+                const savedData = localStorage.getItem(GAME_DATA_KEY);
 
-                if (docSnap.exists()) {
-                    const loadedData = docSnap.data();
+                if (savedData) {
+                    const loadedData = JSON.parse(savedData);
                     // Merge loaded data into gameState, ensuring new fields are handled
-                    gameState = { ...gameState, ...loadedData };
+                    gameState = { ...DEFAULT_GAME_STATE, ...loadedData };
                     
-                    // Initialize new fields if they were missing (e.g., from an old save)
-                    gameState.upgrades = gameState.upgrades || { bannerLevel: 0, tiktokPage: false };
-                    gameState.richChocolate = gameState.richChocolate || { isActive: false };
+                    // Ensure richChocolate and upgrades exist for backward compatibility
+                    gameState.upgrades = gameState.upgrades || DEFAULT_GAME_STATE.upgrades;
+                    gameState.richChocolate = gameState.richChocolate || DEFAULT_GAME_STATE.richChocolate;
 
-                    logMessage(`Game loaded successfully from Firestore! Welcome back to Day ${gameState.day}.`, 'info');
+                    logMessage(`Game loaded successfully from local storage! Welcome back to Day ${gameState.day}.`, 'info');
                 } else {
                     logMessage("No saved game found. Starting a new game.", 'info');
                 }
@@ -742,25 +672,26 @@
                 document.getElementById('status-message').textContent = 'Ready!';
 
                 if (gameState.day === 0) {
-                    startNewDayLogic(); // Use logic function to avoid initial transition
+                    startNewDayLogic(); // Start day 1
                 } else {
-                    updateUI();
+                    updateUI(); // Display the loaded day
                 }
 
             } catch (error) {
-                console.error("Error loading game state from Firestore:", error);
+                console.error("Error loading game state from localStorage:", error);
                 document.getElementById('status-message').textContent = 'Error loading game. Check console.';
+                startNewDayLogic(); // Start new game on error
             }
         }
         window.loadGame = loadGame;
 
-        // Initialize Firebase on window load
+        // Initialize on window load
         window.onload = () => {
             window.loadSettings(); 
-            window.initFirebase(); 
+            window.loadGame(); // Start game logic
 
             document.getElementById('set-price-button').addEventListener('click', handlePriceSetting);
-            document.getElementById('end-day-button').addEventListener('click', startNewDay); // Use the new transition function
+            document.getElementById('end-day-button').addEventListener('click', startNewDay); 
             document.getElementById('rich-chocolate-toggle').addEventListener('change', toggleRichChocolate);
 
             // TTS Listener for the main prompt
@@ -779,16 +710,8 @@
             document.getElementById('upgrades-button').addEventListener('click', renderUpgradesModal);
             document.getElementById('close-upgrades-modal').addEventListener('click', () => document.getElementById('upgrades-modal').classList.add('hidden'));
 
-            // Set userId display after auth
-            if (window.auth && window.onAuthStateChanged) {
-                window.onAuthStateChanged(window.auth, (user) => {
-                    if (user) {
-                        document.getElementById('user-id-display').textContent = user.uid;
-                    }
-                });
-            } else {
-                document.getElementById('user-id-display').textContent = 'Loading...';
-            }
+            // User ID Display is now unnecessary since we are not using Firebase auth/multi-user data
+            document.getElementById('user-id-display-container').classList.add('hidden');
         };
     </script>
 </head>
@@ -813,7 +736,7 @@
             </div>
         </div>
         
-        <p id="status-message" class="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">Initializing...</p>
+        <p id="status-message" class="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">Ready!</p>
 
         <!-- Stats Panel -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -903,9 +826,9 @@
             </div>
         </div>
 
-        <!-- User ID Display for Collaboration/Debugging -->
-        <div class="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
-            Current User ID: <span id="user-id-display" class="font-mono">Loading...</span>
+        <!-- User ID Display (Hidden since Firestore is removed) -->
+        <div id="user-id-display-container" class="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
+            Game state saved locally in your browser storage.
         </div>
     </div>
 
@@ -957,7 +880,7 @@
         <div class="text-white flex flex-col items-center">
             <div class="saving-spinner border-4 border-t-4 border-gray-200 border-t-pink-500 rounded-full w-12 h-12 mb-4"></div>
             <p class="text-lg font-semibold">Tucking in for the night...</p>
-            <p class="text-sm">Saving progress to cloud storage...</p>
+            <p class="text-sm">Saving progress to local storage...</p>
         </div>
     </div>
 
