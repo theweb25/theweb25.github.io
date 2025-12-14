@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chocolate Stand Tycoon v5 (Customizable)</title>
+    <title>choco v8
+    </title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Load Tone.js for sound effects -->
-    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.58/build/Tone.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.58/build/Tone.js"></script>
     <script>
         // Configure Tailwind to use class-based dark mode
         tailwind.config = {
@@ -83,21 +84,21 @@
             background: var(--secondary-color-dark);
         }
 
-        /* Toggle switch styling */
-        .toggle-checkbox:checked {
-            right: 0;
-            border-color: var(--secondary-color);
+        /* Action Button Styles */
+        .action-btn {
+            background-color: var(--primary-color);
+            transition: background-color 0.15s, transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 6px -1px rgba(var(--primary-color-rgb), 0.3);
         }
-        .toggle-checkbox:checked + .toggle-label {
+        .action-btn:hover:not(:disabled) {
             background-color: var(--secondary-color);
         }
-
-        /* Rich Chocolate Toggle Specifics (override with dark brown) */
-        .rich-chocolate-toggle:checked + .toggle-label {
-            background-color: #5d2508 !important; /* Dark brown for rich chocolate */
+        .action-btn:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: none;
         }
-        .rich-chocolate-toggle:checked + .toggle-label .toggle-checkbox {
-            background-color: #fca5a5 !important; /* Reddish white dot */
+        .dark .action-btn {
+             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
         }
         
         /* Day Transition Overlay Styles */
@@ -119,17 +120,59 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Dark Mode Toggle Switch CSS */
+        .toggle-label {
+            @apply bg-gray-300 dark:bg-gray-600;
+        }
+        .toggle-checkbox {
+            @apply bg-white dark:bg-gray-400;
+        }
+        input:checked + .toggle-label {
+            @apply bg-green-500 dark:bg-green-600;
+        }
+        input:checked ~ .toggle-checkbox {
+            transform: translateX(20px) translateY(1px);
+        }
     </style>
     
     <!-- The main game script -->
     <script>
         // Game Constants
-        const BASE_COST_PER_BAR = 1.50;
-        const RICH_CHOCOLATE_BONUS_COST = 0.75; 
-        const RICH_CHOCOLATE_MAX_PRICE_BONUS = 2.00; 
+        const ITEM_CONFIG = {
+            'Milk Chocolate': { emoji: '🥛🍫', cost: 1.50, priceMaxBonus: 0.00 },
+            'Dark Chocolate': { emoji: '🌑🍫', cost: 1.75, priceMaxBonus: 0.50 },
+            'White Chocolate': { emoji: '⚪🍫', cost: 1.60, priceMaxBonus: 0.20 },
+            'Rich Chocolate': { emoji: '👑🍫', cost: 2.25, priceMaxBonus: 2.00 },
+            'Water': { emoji: '💧', cost: 0.50, priceMaxBonus: 1.00 } // Water has low cost, high demand bonus in heat
+        };
+
         const BASE_MAX_ORDERS = 10;
         const BASE_MAX_ACCEPTABLE_PRICE = 10.00; 
         const CUSTOMER_COOLDOWN_MS = 1500; 
+
+        // --- New Customer Attitude Constants (Expanded) ---
+        const CUSTOMER_TYPES = {
+            // Original
+            'Standard Joe': { emoji: '🚶', multiplier: 1.0, description: 'An average customer. Price sensitive, but reasonable.' },
+            'Bargain Hunter': { emoji: '📉', multiplier: 0.8, description: 'Only buys if the price is low. Very sensitive to price changes.' },
+            'Loyalist': { emoji: '👑', multiplier: 1.2, description: 'Loves your chocolate and is willing to pay a premium.' },
+            'Rich Tourist': { emoji: '💸', multiplier: 1.5, description: 'Doesn\'t check the price tag. Very profitable.' },
+            'Indecisive Kid': { emoji: '🤔👶', multiplier: 0.7, description: 'Poor but cute. Will waste time deciding after the transaction.' },
+            
+            // New, more complex attitudes
+            'Budget Student': { emoji: '📚', multiplier: 0.85, description: 'Slightly above a Bargain Hunter. Needs an affordable treat.' },
+            'Impulse Buyer': { emoji: '🛍️', multiplier: 1.35, description: 'Buys on a whim. Less likely to care about price.' },
+            'Local Regular': { emoji: '🏡', multiplier: 1.05, description: 'A reliable repeat customer. Slight loyalty bonus.' },
+            'Gourmet Critic': { emoji: '🧐', multiplier: 1.15, description: 'Pays a premium for perceived quality, but highly critical if disappointed.' },
+            'Grumpy Commuter': { emoji: '😠', multiplier: 0.9, description: 'Wants their fix fast and cheap. Highly sensitive to any price increase.' },
+            'Birthday Planner': { emoji: '🎂', multiplier: 1.4, description: 'Buying a large batch for an event. Very high spending tolerance.' },
+            // FIX: Changed outer quotes to double quotes to handle internal single quote (it's) correctly.
+            'Social Media Influencer': { emoji: '🤳', multiplier: 1.0, description: "Value conscious for status, but will pay average price if it's 'cool'." },
+            'Office Supply Runner': { emoji: '📦', multiplier: 1.1, description: 'Buying on a company card. Higher tolerance, but not excessively so.' },
+        };
+        const INDECISIVE_KID_CHANCE = 0.15; // 15% chance to encounter an indecisive kid
+        const INDECISIVE_KID_DELAY_MS = 3000; // Extra 3 seconds delay
 
         const UPGRADE_CONFIG = {
             BANNER_1: { key: 'BANNER_1', name: "Small Banner Ad", cost: 150.00, orderIncrease: 5, description: "A simple banner to catch local attention." },
@@ -151,12 +194,15 @@
                 bannerLevel: 0, 
                 tiktokPage: false,
             },
-            richChocolate: {
-                isActive: false, 
-            }
+            currentCustomer: {
+                request: null, // The item the customer *wants*
+                priceBase: BASE_MAX_ACCEPTABLE_PRICE, // Base price customer is willing to pay
+                type: null, // New: The type of customer
+            },
+            lastChoice: null, // The item the player chose
         };
 
-        // --- New Styling Constants ---
+        // --- Styling Constants ---
         const COLOR_MAP = {
             'pink': {
                 primary: 'pink-600', primaryDark: 'pink-400', 
@@ -196,19 +242,18 @@
         };
 
         // Local Storage Keys
-        const GAME_DATA_KEY = 'cs_tycoon_game_data_v5'; 
-        const SETTINGS_KEY = 'cs_tycoon_settings_v5';
+        const GAME_DATA_KEY = 'cs_tycoon_game_data_v8'; // Updated key for new version
+        const SETTINGS_KEY = 'cs_tycoon_settings_v8'; // Updated key for new version
 
         const WEATHER_EFFECTS = {
-            'Sunny': { effect: 1.2, emoji: '☀️', message: 'Perfect weather! Customers are thirsty for chocolate.' },
+            'Sunny': { effect: 1.2, emoji: '☀️', message: 'Perfect weather! High demand for cold drinks and treats.' },
             'Cloudy': { effect: 1.0, emoji: '☁️', message: 'Average day. Business as usual.' },
-            'Rainy': { effect: 0.8, emoji: '🌧️', message: 'Gloomy day. Fewer people out, but they want comfort food.' },
-            'Heatwave': { effect: 0.6, emoji: '🔥', message: 'It\'s melting! Price must be low or they won\'t risk it.' },
-            'Snowing': { effect: 1.5, emoji: '❄️', message: 'Cold weather brings high demand for hot chocolate (and bars!).' }
+            'Rainy': { effect: 0.8, emoji: '🌧️', message: 'Gloomy day. Lower foot traffic, but high demand for comfort food (Dark/Rich Choco).' },
+            'Heatwave': { effect: 0.6, emoji: '🔥', message: 'It\'s melting! Price must be low or they won\'t risk it. WATER is very popular.' },
+            'Snowing': { effect: 1.5, emoji: '❄️', message: 'Cold weather brings high demand for hot chocolate ingredients (Milk/Rich Choco).' }
         };
 
-        const CUSTOMER_PROMPT_STANDARD = "A customer approaches. What price will you set for a single chocolate bar?";
-        const CUSTOMER_PROMPT_RICH = "A delighted customer approaches, smelling the rich cocoa. What premium price will you set?";
+        const CUSTOMER_PROMPT = "What price will you set for a single item?";
         
         // --- Tone.js Sound Initialization ---
         const successSynth = new Tone.Synth({
@@ -225,75 +270,30 @@
             octaves: 1.5
         }).toDestination();
         
+        /**
+         * Schedule notes using Tone.now() plus an offset to prevent the "Start time must be strictly greater" error.
+         */
         function playSuccessSound() {
             if (Tone.context.state !== 'running') { Tone.start(); }
-            successSynth.triggerAttackRelease("C5", "8n");
-            setTimeout(() => successSynth.triggerAttackRelease("E5", "8n"), 100);
-            setTimeout(() => successSynth.triggerAttackRelease("G5", "8n"), 200);
+            const now = Tone.now();
+            successSynth.triggerAttackRelease("C5", "8n", now);
+            successSynth.triggerAttackRelease("E5", "8n", now + 0.1); // 100ms later
+            successSynth.triggerAttackRelease("G5", "8n", now + 0.2); // 200ms later
         }
 
+        /**
+         * Schedule notes using Tone.now() plus an offset to prevent the "Start time must be strictly greater" error.
+         */
         function playRejectSound() {
             if (Tone.context.state !== 'running') { Tone.start(); }
-            rejectSynth.triggerAttackRelease("G3", "16n", Tone.now(), 0.5);
-            setTimeout(() => rejectSynth.triggerAttackRelease("C#3", "16n", Tone.now(), 0.5), 100);
+            const now = Tone.now();
+            rejectSynth.triggerAttackRelease("G3", "16n", now, 0.5);
+            rejectSynth.triggerAttackRelease("C#3", "16n", now + 0.1, 0.5); // 100ms later
         }
 
-        // --- Utility functions for TTS (Kept for compatibility) ---
-        window.base64ToArrayBuffer = (base64) => {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        };
-
-        window.pcmToWav = (pcmData, sampleRate) => {
-            const numChannels = 1;
-            const bytesPerSample = 2; // Int16
-            const buffer = new ArrayBuffer(44 + pcmData.byteLength);
-            const dataView = new DataView(buffer);
-            writeString(dataView, 0, 'RIFF');
-            dataView.setUint32(4, 36 + pcmData.byteLength, true);
-            writeString(dataView, 8, 'WAVE');
-            writeString(dataView, 12, 'fmt ');
-            dataView.setUint32(16, 16, true);
-            dataView.setUint16(20, 1, true); 
-            dataView.setUint16(22, numChannels, true);
-            dataView.setUint32(24, sampleRate, true);
-            dataView.setUint32(28, sampleRate * numChannels * bytesPerSample, true); 
-            dataView.setUint16(32, numChannels * bytesPerSample, true); 
-            dataView.setUint16(34, 16, true); 
-            writeString(dataView, 36, 'data');
-            dataView.setUint32(40, pcmData.byteLength, true);
-            const pcmView = new Int16Array(pcmData);
-            for (let i = 0; i < pcmView.length; i++) {
-                dataView.setInt16(44 + i * 2, pcmView[i], true);
-            }
-            return new Blob([dataView], { type: 'audio/wav' });
-        };
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        }
-        
+        // --- Utility function for TTS (Removed per user request) ---
         async function speakText(text) {
-            const ttsButton = document.getElementById('prompt-tts');
-            if (ttsButton) {
-                ttsButton.disabled = true;
-                ttsButton.classList.add('opacity-50');
-            }
-            // ... (TTS implementation omitted for brevity, assumed to be working)
-            // Error handling fallback for the TTS button:
-            setTimeout(() => {
-                if (ttsButton) {
-                    ttsButton.disabled = false;
-                    ttsButton.classList.remove('opacity-50');
-                }
-            }, 1000); 
+             // TTS functionality removed
         }
         window.speakText = speakText; 
 
@@ -301,20 +301,41 @@
 
         /**
          * Converts a Tailwind color/shade string (e.g., 'pink-600') to its hex value.
-         * Used for setting CSS variables which control the aesthetic of the main card.
+         * Also sets the RGB variable for button shadows.
          */
         function getHexColor(colorClass) {
             const hexMap = {
-                'pink-600': '#db2777', 'pink-700': '#be185d', 'pink-400': '#f472b6', 'pink-800': '#9d174d',
-                'teal-600': '#0d9488', 'teal-700': '#0f766e', 'teal-400': '#2dd4bf', 'teal-800': '#0e7490',
-                'amber-600': '#f59e0b', 'amber-700': '#d97706', 'amber-400': '#fbbf24', 'amber-800': '#b45309',
-                'indigo-600': '#4f46e5', 'indigo-700': '#4338ca', 'indigo-400': '#818cf8', 'indigo-800': '#3730a3',
-                'green-600': '#16a34a', 'green-400': '#4ade80',
-                'red-600': '#dc2626', 'red-400': '#f87171',
-                'yellow-600': '#ca8a04', 'yellow-400': '#facc15',
-                'purple-600': '#9333ea', 'purple-700': '#7e22ce', 'purple-800': '#6b21a8'
+                'pink-600': { hex: '#db2777', rgb: '219, 39, 119' }, 
+                'pink-700': { hex: '#be185d', rgb: '190, 24, 93' }, 
+                'pink-400': { hex: '#f472b6', rgb: '244, 114, 182' }, 
+                'pink-800': { hex: '#9d174d', rgb: '157, 23, 77' },
+
+                'teal-600': { hex: '#0d9488', rgb: '13, 148, 136' }, 
+                'teal-700': { hex: '#0f766e', rgb: '15, 118, 110' }, 
+                'teal-400': { hex: '#2dd4bf', rgb: '45, 212, 191' }, 
+                'teal-800': { hex: '#0e7490', rgb: '14, 116, 144' },
+
+                'amber-600': { hex: '#f59e0b', rgb: '245, 158, 11' }, 
+                'amber-700': { hex: '#d97706', rgb: '217, 119, 6' }, 
+                'amber-400': { hex: '#fbbf24', rgb: '251, 191, 36' }, 
+                'amber-800': { hex: '#b45309', rgb: '180, 83, 9' },
+
+                'indigo-600': { hex: '#4f46e5', rgb: '79, 70, 229' }, 
+                'indigo-700': { hex: '#4338ca', rgb: '67, 56, 202' }, 
+                'indigo-400': { hex: '#818cf8', rgb: '129, 140, 248' }, 
+                'indigo-800': { hex: '#3730a3', rgb: '55, 48, 163' },
+
+                'green-600': { hex: '#16a34a', rgb: '22, 163, 74' }, 
+                'green-400': { hex: '#4ade80', rgb: '74, 222, 128' },
+                'red-600': { hex: '#dc2626', rgb: '220, 38, 38' }, 
+                'red-400': { hex: '#f87171', rgb: '248, 113, 113' },
+                'yellow-600': { hex: '#ca8a04', rgb: '202, 138, 4' }, 
+                'yellow-400': { hex: '#facc15', rgb: '250, 204, 21' },
+                'purple-600': { hex: '#9333ea', rgb: '147, 51, 234' }, 
+                'purple-700': { hex: '#7e22ce', rgb: '126, 34, 206' }, 
+                'purple-800': { hex: '#6b21a8', rgb: '107, 33, 168' }
             };
-            return hexMap[colorClass] || '#db2777'; // Fallback to pink-600
+            return hexMap[colorClass] || { hex: '#db2777', rgb: '219, 39, 119' }; // Fallback to pink-600
         }
 
 
@@ -336,10 +357,16 @@
             }
 
             // 2. Apply Accent Color CSS Variables
-            root.style.setProperty('--primary-color', getHexColor(color.primary));
-            root.style.setProperty('--primary-color-dark', getHexColor(color.primaryDark));
-            root.style.setProperty('--secondary-color', getHexColor(color.secondary));
-            root.style.setProperty('--secondary-color-dark', getHexColor(color.secondaryDark));
+            const primary = getHexColor(color.primary);
+            const primaryDark = getHexColor(color.primaryDark);
+            const secondary = getHexColor(color.secondary);
+            const secondaryDark = getHexColor(color.secondaryDark);
+            
+            root.style.setProperty('--primary-color', primary.hex);
+            root.style.setProperty('--primary-color-dark', primaryDark.hex);
+            root.style.setProperty('--secondary-color', secondary.hex);
+            root.style.setProperty('--secondary-color-dark', secondaryDark.hex);
+            root.style.setProperty('--primary-color-rgb', primary.rgb); // For button shadows
 
             // 3. Apply Rounding CSS Variable
             root.style.setProperty('--border-radius-size', rounding.cssVar);
@@ -361,52 +388,49 @@
             const color = COLOR_MAP[settingsState.accentColor];
             const colorBase = color.base;
 
-            // Helper to generate text color classes (for headers and icons)
-            const getTextColorClasses = (shade) => `text-${colorBase}-${shade} dark:text-${colorBase}-300`;
-
-            // List of all possible text color classes to remove (to handle color switching correctly)
+            // List of all possible text color classes to remove 
             const allColorTextClasses = [
-                'text-pink-600', 'dark:text-pink-300', 'text-teal-600', 'dark:text-teal-300', 'text-amber-600', 'dark:text-amber-300', 'text-indigo-600', 'dark:text-indigo-300',
-                'text-pink-700', 'dark:text-pink-300', 'text-teal-700', 'dark:text-teal-300', 'text-amber-700', 'dark:text-amber-300', 'text-indigo-700', 'dark:text-indigo-300'
+                'text-pink-700', 'dark:text-pink-300', 'text-teal-700', 'dark:text-teal-300', 
+                'text-amber-700', 'dark:text-amber-300', 'text-indigo-700', 'dark:text-indigo-300',
+                'text-pink-600', 'dark:text-pink-400', 'text-teal-600', 'dark:text-teal-400', 
+                'text-amber-600', 'dark:text-amber-400', 'text-indigo-600', 'dark:text-indigo-400',
             ];
             
-            // 1. Re-apply primary title color (FIXING THE "BANNER" ISSUE)
+            // Helper to clean and add classes
+            const updateClasses = (element, classes) => {
+                if (element) {
+                    element.classList.remove(...allColorTextClasses);
+                    classes.forEach(cls => element.classList.add(cls));
+                }
+            };
+
+            // 1. Title Color
             const title = document.querySelector('h1');
-            // Remove previous dynamic color classes
-            title.classList.remove(...allColorTextClasses);
-            // We only want the font size/weight and the text color classes
-            title.className = `text-3xl sm:text-4xl font-extrabold ${getTextColorClasses(700)}`; 
+            updateClasses(title, [`text-${colorBase}-700`, `dark:text-${colorBase}-300`]);
+            title.className = `text-3xl sm:text-4xl font-extrabold ${Array.from(title.classList).join(' ')}`; 
 
-            // 2. Update main action button (needs background/shadow)
-            const setPriceBtn = document.getElementById('set-price-button');
-            setPriceBtn.className = `flex items-center justify-center bg-${colorBase}-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-${colorBase}-700 transition duration-150 shadow-lg shadow-${colorBase}-300 active:shadow-none active:translate-y-0.5 disabled:opacity-50 dark:bg-${colorBase}-700 dark:hover:bg-${colorBase}-800 dark:shadow-${colorBase}-500/50 w-full sm:w-auto`;
-
-            // 3. Update TTS button color (icon)
-            const ttsBtn = document.getElementById('prompt-tts');
-            // Remove all previous dynamic color classes
-            ttsBtn.classList.remove(...allColorTextClasses);
-            // Add new dynamic color classes
-            ttsBtn.classList.add(`text-${colorBase}-600`, `dark:text-${colorBase}-300`);
-
-            // 4. Update Game Log title color
+            // 2. Game Log title color
             const logTitle = document.querySelector('.chocolate-card h2');
-            logTitle.classList.remove(...allColorTextClasses);
-            logTitle.classList.add(`text-${colorBase}-700`, `dark:text-${colorBase}-300`);
+            updateClasses(logTitle, [`text-${colorBase}-700`, `dark:text-${colorBase}-300`]);
             
-            // 5. Update Modal Titles
-            document.getElementById('settings-modal').querySelector('h3').classList.remove(...allColorTextClasses);
-            document.getElementById('settings-modal').querySelector('h3').classList.add(...getTextColorClasses(700).split(' '));
-            
-            document.getElementById('upgrades-modal').querySelector('h3').classList.remove(...allColorTextClasses);
-            document.getElementById('upgrades-modal').querySelector('h3').classList.add(...getTextColorClasses(700).split(' '));
+            // 3. Modal Titles
+            updateClasses(document.getElementById('settings-modal').querySelector('h3'), [`text-${colorBase}-700`, `dark:text-${colorBase}-300`]);
+            updateClasses(document.getElementById('upgrades-modal').querySelector('h3'), [`text-${colorBase}-700`, `dark:text-${colorBase}-300`]);
 
-            // 6. Update input focus ring color (needs to be done dynamically if we want it to match)
+            // 4. Input focus ring color 
             const priceInput = document.getElementById('price-input');
-            priceInput.classList.remove('border-pink-300', 'focus:ring-pink-500', 'focus:border-pink-500', 
-                                     'border-teal-300', 'focus:ring-teal-500', 'focus:border-teal-500', 
-                                     'border-amber-300', 'focus:ring-amber-500', 'focus:border-amber-500', 
-                                     'border-indigo-300', 'focus:ring-indigo-500', 'focus:border-indigo-500');
+            priceInput.classList.forEach(cls => {
+                if (cls.startsWith('border-') && cls.endsWith('-300')) priceInput.classList.remove(cls);
+                if (cls.startsWith('focus:ring-') && cls.endsWith('-500')) priceInput.classList.remove(cls);
+                if (cls.startsWith('focus:border-') && cls.endsWith('-500')) priceInput.classList.remove(cls);
+            });
             priceInput.classList.add(`border-${colorBase}-300`, `focus:ring-${colorBase}-500`, `focus:border-${colorBase}-500`);
+
+            // 5. Action buttons (to ensure initial coloring is right before CSS variables kick in)
+            const actionButtons = document.querySelectorAll('.item-choice-btn');
+            actionButtons.forEach(btn => {
+                 btn.className = `item-choice-btn flex-grow action-btn text-white font-bold py-3 px-2 transition duration-150 shadow-lg shadow-${colorBase}-300 active:shadow-none active:translate-y-0.5 disabled:opacity-50 dark:shadow-gray-700`;
+            });
 
         }
         window.updateDynamicElements = updateDynamicElements;
@@ -473,26 +497,67 @@
 
             const interactionArea = document.getElementById('interaction-area');
             const endDayBtn = document.getElementById('end-day-button');
-            const richToggle = document.getElementById('rich-chocolate-toggle');
+            const customerRequestDisplay = document.getElementById('customer-request');
+            const customerTypeInfoDisplay = document.getElementById('customer-type-info');
+            const customerEmojiDisplay = document.getElementById('customer-emoji');
 
-            richToggle.checked = gameState.richChocolate.isActive;
-
+            // Hide/Show main interaction elements
             if (gameState.ordersRemaining > 0) {
                 endDayBtn.classList.add('hidden');
                 interactionArea.classList.remove('hidden');
+
+                const currentCustomer = gameState.currentCustomer;
+                const customerTypeConfig = CUSTOMER_TYPES[currentCustomer.type] || CUSTOMER_TYPES['Standard Joe'];
+
+                if (currentCustomer.request && currentCustomer.type) {
+                    customerEmojiDisplay.textContent = customerTypeConfig.emoji;
+                    customerRequestDisplay.textContent = `${currentCustomer.request}`;
+                    customerTypeInfoDisplay.innerHTML = `
+                        <span class="font-bold">${customerTypeConfig.name}:</span> 
+                        <span class="text-xs font-medium">${customerTypeConfig.description}</span>
+                    `;
+                } else {
+                    customerEmojiDisplay.textContent = '🧑';
+                    customerRequestDisplay.textContent = 'Preparing next customer...';
+                    customerTypeInfoDisplay.textContent = '';
+                }
                 
                 if (!gameState.isProcessing) {
                     document.getElementById('acceptance-feedback').innerHTML = '';
+                    // Reset selected item appearance
+                    document.querySelectorAll('.item-choice-btn').forEach(btn => btn.style.border = 'none');
                 }
 
-                document.getElementById('prompt-text').textContent = gameState.richChocolate.isActive ? CUSTOMER_PROMPT_RICH : CUSTOMER_PROMPT_STANDARD;
-
-                const currentCost = gameState.richChocolate.isActive ? (BASE_COST_PER_BAR + RICH_CHOCOLATE_BONUS_COST).toFixed(2) : BASE_COST_PER_BAR.toFixed(2);
-                document.getElementById('price-info').textContent = `Cost per bar: $${currentCost}`;
+                document.getElementById('prompt-text').textContent = CUSTOMER_PROMPT;
                 
             } else {
                 interactionArea.classList.add('hidden');
                 endDayBtn.classList.remove('hidden');
+                customerRequestDisplay.textContent = '';
+                customerTypeInfoDisplay.textContent = '';
+            }
+
+            // Update item info tooltips
+            const items = Object.keys(ITEM_CONFIG);
+            items.forEach(itemName => {
+                const item = ITEM_CONFIG[itemName];
+                const btn = document.getElementById(`item-${itemName.replace(/\s/g, '-')}-btn`);
+                if (btn) {
+                    btn.setAttribute('title', `Cost: $${item.cost.toFixed(2)} | Max Price Bonus: $${item.priceMaxBonus.toFixed(2)}`);
+                }
+            });
+            
+            // Set price button state
+            const setPriceBtn = document.getElementById('set-price-button');
+            const itemSelected = !!gameState.lastChoice;
+            setPriceBtn.disabled = gameState.isProcessing || !itemSelected;
+            setPriceBtn.textContent = gameState.isProcessing ? 'Processing...' : (itemSelected ? `Sell ${ITEM_CONFIG[gameState.lastChoice].emoji}` : 'Select Item First');
+
+            if (gameState.lastChoice) {
+                 const item = ITEM_CONFIG[gameState.lastChoice];
+                 document.getElementById('price-info').textContent = `Chosen Cost: $${item.cost.toFixed(2)}`;
+            } else {
+                 document.getElementById('price-info').textContent = `Choose an item below.`;
             }
         }
 
@@ -505,6 +570,8 @@
                 colorClass = 'text-green-600 dark:text-green-400';
             } else if (type === 'error') {
                 colorClass = 'text-red-600 dark:text-red-400';
+            } else if (type === 'warning') {
+                colorClass = 'text-yellow-600 dark:text-yellow-400';
             }
 
             logEntry.className = `p-2 ${colorClass} border-b border-gray-100 dark:border-gray-700`;
@@ -513,7 +580,7 @@
             logArea.scrollTop = logArea.scrollHeight; 
         }
 
-        // === Upgrades Logic ===
+        // === Upgrades Logic (No changes) ===
 
         function renderUpgradesModal() {
             const container = document.getElementById('upgrades-list');
@@ -580,7 +647,7 @@
 
             if (upgradeKey.startsWith('BANNER')) {
                 const level = upgradeKey.endsWith('1') ? 1 : 2;
-                if (gameState.upgrades.bannerLevel === level) { logMessage(`${config.name} already purchased!`, 'info'); return; }
+                if (gameState.upgrades.bannerLevel === level) { logMessage(`${config.name} already purchased!`, 'warning'); return; }
                 if (level === 2 && gameState.upgrades.bannerLevel < 1) { logMessage("Must purchase Small Banner Ad first.", 'error'); return; }
 
                 gameState.money -= config.cost;
@@ -588,7 +655,7 @@
                 logMessage(`Purchased ${config.name}! Max daily orders increased by ${config.orderIncrease}.`, 'success');
 
             } else if (upgradeKey === 'TIKTOK_PAGE') {
-                if (gameState.upgrades.tiktokPage) { logMessage("TikTok Page already launched!", 'info'); return; }
+                if (gameState.upgrades.tiktokPage) { logMessage("TikTok Page already launched!", 'warning'); return; }
                 gameState.money -= config.cost;
                 gameState.upgrades.tiktokPage = true;
                 logMessage(`Launched TikTok Page! Max daily orders increased by ${config.orderIncrease} and customer hype is massive!`, 'success');
@@ -603,14 +670,67 @@
 
         // === Game Logic ===
 
-        function toggleRichChocolate() {
-            gameState.richChocolate.isActive = !gameState.richChocolate.isActive;
-            logMessage(`Rich Chocolate mode is now ${gameState.richChocolate.isActive ? 'ACTIVE' : 'INACTIVE'}. Next customer will reflect this choice.`, 'info');
-            updateUI();
-            saveGame();
-        }
-        window.toggleRichChocolate = toggleRichChocolate;
+        function selectItem(itemName) {
+            if (gameState.isProcessing) return;
 
+            gameState.lastChoice = itemName;
+            const item = ITEM_CONFIG[itemName];
+            const color = getHexColor(COLOR_MAP[settingsState.accentColor].primary).hex;
+
+            // Highlight the selected button
+            document.querySelectorAll('.item-choice-btn').forEach(btn => {
+                btn.style.border = 'none';
+            });
+            document.getElementById(`item-${itemName.replace(/\s/g, '-')}-btn`).style.border = `4px solid ${color}`;
+            
+            // Clear feedback
+            document.getElementById('acceptance-feedback').innerHTML = '';
+
+            updateUI();
+        }
+        window.selectItem = selectItem;
+
+
+        function generateCustomerRequest() {
+            // 1. Determine Customer Type
+            const types = Object.keys(CUSTOMER_TYPES);
+            let customerTypeKey;
+            
+            // Check for Indecisive Kid event
+            if (Math.random() < INDECISIVE_KID_CHANCE) {
+                customerTypeKey = 'Indecisive Kid';
+            } else {
+                // Filter out the Indecisive Kid from standard random selection
+                const standardTypes = types.filter(t => t !== 'Indecisive Kid');
+                const typeIndex = Math.floor(Math.random() * standardTypes.length);
+                customerTypeKey = standardTypes[typeIndex];
+            }
+            
+            const customerType = CUSTOMER_TYPES[customerTypeKey];
+            gameState.currentCustomer.type = customerTypeKey;
+
+
+            // 2. Determine Item Request
+            const items = Object.keys(ITEM_CONFIG);
+            const requestIndex = Math.floor(Math.random() * items.length);
+            const requestItem = items[requestIndex];
+
+            // 3. Adjust base price willing to pay based on requested item and weather
+            let basePrice = BASE_MAX_ACCEPTABLE_PRICE + ITEM_CONFIG[requestItem].priceMaxBonus;
+
+            // Apply weather and item-specific bonuses
+            if (gameState.weather === 'Heatwave' && requestItem === 'Water') {
+                 basePrice *= 1.5; // Premium for cold drinks
+            }
+            
+            if ((gameState.weather === 'Rainy' || gameState.weather === 'Snowing') && (requestItem === 'Dark Chocolate' || requestItem === 'Rich Chocolate')) {
+                 basePrice *= 1.2;
+            }
+
+            gameState.currentCustomer.request = requestItem;
+            gameState.currentCustomer.priceBase = basePrice;
+            gameState.lastChoice = null; // Reset choice for new customer
+        }
 
         function startNewDayLogic() {
             gameState.day += 1;
@@ -635,7 +755,8 @@
 
             logMessage(`--- DAY ${gameState.day} BEGINS ---`, 'info');
             logMessage(`Weather is ${gameState.weather}. Max expected customers: ${gameState.totalOrders}.`, 'info');
-
+            
+            generateCustomerRequest();
             updateUI();
         }
 
@@ -667,41 +788,51 @@
 
 
         // Core Decision Logic
-        function checkAcceptance(price) {
-            const isRich = gameState.richChocolate.isActive;
-            let costOfGoods = BASE_COST_PER_BAR;
-            let maxAcceptablePrice = BASE_MAX_ACCEPTABLE_PRICE;
+        function checkAcceptance(price, chosenItem) {
+            const requestedItem = gameState.currentCustomer.request;
+            const customerBasePrice = gameState.currentCustomer.priceBase;
+            const chosenItemConfig = ITEM_CONFIG[chosenItem];
+            const customerTypeConfig = CUSTOMER_TYPES[gameState.currentCustomer.type];
 
-            if (isRich) {
-                costOfGoods += RICH_CHOCOLATE_BONUS_COST;
-                maxAcceptablePrice += RICH_CHOCOLATE_MAX_PRICE_BONUS;
+            // 1. Item Match Check (Crucial new difficulty)
+            const isMatch = chosenItem === requestedItem;
+            if (!isMatch) {
+                return { accepts: false, isMatch: false, chance: 0, cost: chosenItemConfig.cost, maxAcceptable: 0 };
             }
+
+            // 2. Price Check
+            const costOfGoods = chosenItemConfig.cost;
+            
+            // Max acceptable price: Base * Weather Effect * Customer Type Multiplier (New)
+            const maxAcceptablePrice = customerBasePrice * WEATHER_EFFECTS[gameState.weather].effect * customerTypeConfig.multiplier; 
             
             const priceRange = maxAcceptablePrice - costOfGoods;
+            // Normalized price: 0 (cheap) to 1 (max acceptable). Can be > 1 if price is too high.
             const normalizedPrice = Math.max(0, price - costOfGoods) / priceRange;
             
+            // Acceptance chance drops quadratically as price increases toward max acceptable.
             const baseChance = Math.max(0, 1 - Math.pow(normalizedPrice, 2.5));
 
-            const weatherEffect = WEATHER_EFFECTS[gameState.weather].effect;
-            let finalChance = baseChance * weatherEffect;
-            
-            finalChance = Math.min(1.0, finalChance);
+            let finalChance = Math.min(1.0, baseChance);
             
             const roll = Math.random();
 
             return {
                 accepts: roll < finalChance,
+                isMatch: true,
                 chance: finalChance,
-                cost: costOfGoods
+                cost: costOfGoods,
+                maxAcceptable: maxAcceptablePrice
             };
         }
 
         function handlePriceSetting() {
-            if (gameState.isProcessing) return;
+            if (gameState.isProcessing || !gameState.lastChoice) return;
 
             const priceInput = document.getElementById('price-input');
             const feedbackDiv = document.getElementById('acceptance-feedback');
             const price = parseFloat(priceInput.value);
+            const chosenItem = gameState.lastChoice;
 
             if (isNaN(price) || price <= 0) {
                 logMessage("Please enter a valid price greater than $0.", 'error');
@@ -712,43 +843,60 @@
             // Disable interaction elements
             document.getElementById('set-price-button').disabled = true;
             priceInput.disabled = true;
-            document.getElementById('rich-chocolate-toggle').disabled = true;
-            document.getElementById('prompt-tts').disabled = true;
+            document.querySelectorAll('.item-choice-btn').forEach(btn => btn.disabled = true);
 
-            const { accepts, chance, cost } = checkAcceptance(price);
+
+            const { accepts, isMatch, chance, cost, maxAcceptable } = checkAcceptance(price, chosenItem);
             const weatherEmoji = WEATHER_EFFECTS[gameState.weather].emoji;
             const color = COLOR_MAP[settingsState.accentColor];
+            const customerTypeConfig = CUSTOMER_TYPES[gameState.currentCustomer.type];
 
             let message;
             let feedbackHtml;
 
-            if (accepts) {
+            if (!isMatch) {
+                playRejectSound();
+                gameState.rejectedOrders += 1;
+                message = `${weatherEmoji} Mistake! Customer requested ${ITEM_CONFIG[gameState.currentCustomer.request].emoji} but you offered ${ITEM_CONFIG[chosenItem].emoji}. Order cancelled.`;
+                feedbackHtml = `
+                    <p class="text-red-600 dark:text-red-400 font-bold text-lg">
+                        ❌ MISMATCH!
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        They wanted ${ITEM_CONFIG[gameState.currentCustomer.request].emoji} but you offered ${ITEM_CONFIG[chosenItem].emoji}.
+                    </p>
+                `;
+                logMessage(message, 'error');
+
+            } else if (accepts) {
                 playSuccessSound(); 
                 const profit = price - cost;
                 gameState.money += profit;
                 gameState.acceptedOrders += 1;
-                message = `${weatherEmoji} Accepted! Sold for $${price.toFixed(2)} (${gameState.richChocolate.isActive ? 'Rich' : 'Standard'}). Profit: $${profit.toFixed(2)}. (Chance: ${(chance * 100).toFixed(1)}%)`;
+                message = `${weatherEmoji} Accepted! Sold ${ITEM_CONFIG[chosenItem].emoji} to ${customerTypeConfig.name} for $${price.toFixed(2)}. Profit: $${profit.toFixed(2)}. (Chance: ${(chance * 100).toFixed(1)}%)`;
                 
                 feedbackHtml = `
                     <p class="text-green-600 dark:text-green-400 font-bold text-lg">
                         ✅ ACCEPTED!
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Chance: ${(chance * 100).toFixed(1)}% | Profit: $${profit.toFixed(2)}
+                        Profit: $${profit.toFixed(2)} | Chance: ${(chance * 100).toFixed(1)}% 
                     </p>
                 `;
                 logMessage(message, 'success');
             } else {
                 playRejectSound(); 
                 gameState.rejectedOrders += 1;
-                message = `${weatherEmoji} Rejected! Customer walked away. (Chance: ${(chance * 100).toFixed(1)}%)`;
+                message = `${weatherEmoji} Rejected! Price $${price.toFixed(2)} was too high for ${ITEM_CONFIG[chosenItem].emoji} (Customer: ${customerTypeConfig.name}). (Chance: ${(chance * 100).toFixed(1)}%)`;
                 
                 feedbackHtml = `
                     <p class="text-red-600 dark:text-red-400 font-bold text-lg">
                         ❌ REJECTED
                     </p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Chance: ${(chance * 100).toFixed(1)}%
+                        Customer (${customerTypeConfig.name}) found price too high. 
+                        <br>
+                        Max Price they'd pay: ~$${maxAcceptable.toFixed(2)}.
                     </p>
                 `;
                 logMessage(message, 'error');
@@ -759,34 +907,49 @@
             gameState.ordersRemaining -= 1;
             priceInput.value = price.toFixed(2); 
 
-            updateUI(); 
             saveGame();
 
             if (gameState.ordersRemaining <= 0) {
                 gameState.isProcessing = false;
                 document.getElementById('set-price-button').disabled = false;
                 priceInput.disabled = false;
-                document.getElementById('rich-chocolate-toggle').disabled = false;
-                document.getElementById('prompt-tts').disabled = false;
+                document.querySelectorAll('.item-choice-btn').forEach(btn => btn.disabled = false);
+                updateUI();
                 return;
             }
-
-            feedbackDiv.innerHTML += `
-                <p class="mt-1 text-sm text-${color.base}-500 dark:text-${color.base}-400 font-medium animate-pulse">
-                    Waiting for next customer...
-                </p>
-            `;
             
+            // --- Indecisive Kid Delay Logic ---
+            const isIndecisiveKid = gameState.currentCustomer.type === 'Indecisive Kid';
+            const effectiveCooldown = isIndecisiveKid ? CUSTOMER_COOLDOWN_MS + INDECISIVE_KID_DELAY_MS : CUSTOMER_COOLDOWN_MS;
+
+            if (isIndecisiveKid) {
+                logMessage(`⚠️ Indecisive Kid Delay! Lost ${INDECISIVE_KID_DELAY_MS / 1000} seconds of selling time.`, 'warning');
+                feedbackDiv.innerHTML += `
+                    <p class="mt-1 text-sm text-yellow-500 dark:text-yellow-400 font-medium">
+                        The kid is stuck deciding what to do with their chocolate... ${INDECISIVE_KID_DELAY_MS / 1000}s Delay!
+                    </p>
+                `;
+            } else {
+                feedbackDiv.innerHTML += `
+                    <p class="mt-1 text-sm text-${color.base}-500 dark:text-${color.base}-400 font-medium animate-pulse">
+                        Waiting for next customer...
+                    </p>
+                `;
+            }
+
+            // --- Use effectiveCooldown here ---
             setTimeout(() => {
+                // Generate next customer's request
+                generateCustomerRequest();
+
                 document.getElementById('set-price-button').disabled = false;
                 priceInput.disabled = false;
-                document.getElementById('rich-chocolate-toggle').disabled = false;
-                document.getElementById('prompt-tts').disabled = false;
+                document.querySelectorAll('.item-choice-btn').forEach(btn => btn.disabled = false);
                 
                 gameState.isProcessing = false;
                 
                 updateUI(); 
-            }, CUSTOMER_COOLDOWN_MS);
+            }, effectiveCooldown); 
 
         }
         window.handlePriceSetting = handlePriceSetting;
@@ -816,10 +979,12 @@
 
                 if (savedData) {
                     const loadedData = JSON.parse(savedData);
+                    // Merge loaded data with defaults to ensure new fields (like currentCustomer.type) exist
                     gameState = { ...DEFAULT_GAME_STATE, ...loadedData };
                     
+                    // Ensure nested objects exist
                     gameState.upgrades = gameState.upgrades || DEFAULT_GAME_STATE.upgrades;
-                    gameState.richChocolate = gameState.richChocolate || DEFAULT_GAME_STATE.richChocolate;
+                    gameState.currentCustomer = gameState.currentCustomer || DEFAULT_GAME_STATE.currentCustomer;
 
                     logMessage(`Game loaded successfully from local storage! Welcome back to Day ${gameState.day}.`, 'info');
                 } else {
@@ -829,8 +994,12 @@
                 document.getElementById('status-message').textContent = 'Ready!';
 
                 if (gameState.day === 0) {
-                    startNewDayLogic(); // Start day 1
+                    startNewDayLogic(); // Start day 1 and generate first customer
                 } else {
+                    // If loading mid-day, make sure there's a current request
+                    if (!gameState.currentCustomer.request && gameState.ordersRemaining > 0) {
+                        generateCustomerRequest();
+                    }
                     updateUI(); // Display the loaded day
                 }
 
@@ -855,12 +1024,13 @@
 
             document.getElementById('set-price-button').addEventListener('click', handlePriceSetting);
             document.getElementById('end-day-button').addEventListener('click', startNewDay); 
-            document.getElementById('rich-chocolate-toggle').addEventListener('change', toggleRichChocolate);
-
-            document.getElementById('prompt-tts').addEventListener('click', (e) => { 
-                e.stopPropagation(); 
-                const prompt = gameState.richChocolate.isActive ? CUSTOMER_PROMPT_RICH : CUSTOMER_PROMPT_STANDARD;
-                window.speakText(prompt); 
+            
+            // Add listeners for the new item choice buttons
+            Object.keys(ITEM_CONFIG).forEach(itemName => {
+                const btn = document.getElementById(`item-${itemName.replace(/\s/g, '-')}-btn`);
+                if (btn) {
+                    btn.addEventListener('click', () => selectItem(itemName));
+                }
             });
 
 
@@ -884,7 +1054,7 @@
     <div class="max-w-4xl mx-auto relative">
         <div class="flex justify-between items-center mb-6">
             <!-- Dynamic Title Color -->
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-pink-700 dark:text-pink-300">🍫 Chocolate Stand Tycoon 💰</h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-pink-700 dark:text-pink-300">💰 Chocolate Pricing Tycoon 📈</h1>
             <!-- Action Buttons -->
             <div class="flex space-x-3">
                 <!-- Upgrades Button -->
@@ -893,7 +1063,7 @@
                 </button>
                 <!-- Settings Button -->
                 <button id="settings-button" class="text-gray-500 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400 transition" aria-label="Open Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
@@ -930,28 +1100,30 @@
 
         <!-- Main Interaction Area -->
         <div id="interaction-area" class="chocolate-card p-6 mb-8 hidden">
-            <!-- Chocolate Type Toggle -->
-            <div class="flex justify-between items-center py-2 mb-4 bg-gray-50 dark:bg-gray-600 p-3 rounded-lg">
+            <!-- Customer Request Display (Updated to include type) -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center py-2 mb-4 bg-gray-50 dark:bg-gray-600 p-3 rounded-lg">
                 <div class="flex items-center space-x-2">
-                    <span class="text-xl" role="img" aria-label="Chocolate bar">🍫</span>
-                    <span class="text-lg font-semibold text-gray-800 dark:text-gray-200">Use Rich Chocolate?</span>
-                    <p id="price-info" class="text-xs text-gray-500 dark:text-gray-400 ml-3">Cost per bar: $1.50</p>
+                    <span id="customer-emoji" class="text-xl" role="img" aria-label="Customer">🧑</span>
+                    <span id="customer-request" class="text-lg font-semibold text-gray-800 dark:text-gray-200">Preparing next customer...</span>
                 </div>
-                <label for="rich-chocolate-toggle" class="relative inline-block w-12 h-6 cursor-pointer">
-                    <input type="checkbox" id="rich-chocolate-toggle" class="rich-chocolate-toggle absolute w-full h-full opacity-0">
-                    <span class="toggle-label absolute inset-0 bg-gray-300 rounded-full transition duration-300 ease-in-out">
-                        <span class="toggle-checkbox absolute w-4 h-4 bg-white rounded-full transition duration-300 ease-in-out transform translate-x-1 translate-y-1 shadow-md border-2 border-gray-300"></span>
-                    </span>
-                </label>
+                <div id="customer-type-info" class="text-sm text-gray-600 dark:text-gray-400 mt-1 md:mt-0 md:text-right"></div>
             </div>
 
-
             <div class="flex items-start mb-4">
-                <p id="prompt-text" class="text-xl font-semibold text-gray-800 dark:text-gray-200">A customer approaches. What price will you set for a single chocolate bar?</p>
-                <!-- Dynamic TTS Button Color -->
-                <button id="prompt-tts" class="ml-2 focus:outline-none text-pink-600 dark:text-pink-300 hover:scale-110 transition" aria-label="Read prompt aloud">
-                    <span class="text-2xl" role="img" aria-label="Speaker icon">🔊</span>
-                </button>
+                <p id="prompt-text" class="text-xl font-semibold text-gray-800 dark:text-gray-200">What price will you set for a single item?</p>
+            </div>
+            
+            <p id="price-info" class="text-sm text-gray-500 dark:text-gray-400 mb-3">Choose an item below.</p>
+
+
+            <!-- Item Selection Buttons -->
+            <div class="grid grid-cols-5 gap-2 mb-4">
+                <!-- Buttons are dynamically colored using CSS variables set in applyStyle, class is .action-btn -->
+                <button id="item-Milk-Chocolate-btn" class="item-choice-btn text-white font-bold py-3 px-2 transition duration-150 rounded-lg" title="Cost: $1.50 | Max Price Bonus: $0.00">🥛🍫 Milk</button>
+                <button id="item-Dark-Chocolate-btn" class="item-choice-btn text-white font-bold py-3 px-2 transition duration-150 rounded-lg" title="Cost: $1.75 | Max Price Bonus: $0.50">🌑🍫 Dark</button>
+                <button id="item-White-Chocolate-btn" class="item-choice-btn text-white font-bold py-3 px-2 transition duration-150 rounded-lg" title="Cost: $1.60 | Max Price Bonus: $0.20">⚪🍫 White</button>
+                <button id="item-Rich-Chocolate-btn" class="item-choice-btn text-white font-bold py-3 px-2 transition duration-150 rounded-lg" title="Cost: $2.25 | Max Price Bonus: $2.00">👑🍫 Rich</button>
+                <button id="item-Water-btn" class="item-choice-btn text-white font-bold py-3 px-2 transition duration-150 rounded-lg" title="Cost: $0.50 | Max Price Bonus: $1.00">💧 Water</button>
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4 items-center">
@@ -972,12 +1144,13 @@
                     <!-- Feedback appears here -->
                 </div>
 
-                <!-- Dynamic Set Price Button Color -->
+                <!-- Set Price Button -->
                 <button
                     id="set-price-button"
                     class="flex items-center justify-center bg-pink-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-pink-700 transition duration-150 shadow-lg shadow-pink-300 active:shadow-none active:translate-y-0.5 disabled:opacity-50 dark:bg-pink-700 dark:hover:bg-pink-800 dark:shadow-pink-500/50 w-full sm:w-auto"
+                    disabled
                 >
-                    Set Price
+                    Select Item First
                 </button>
             </div>
         </div>
@@ -1004,7 +1177,7 @@
             </div>
         </div>
 
-        <!-- User ID Display (Hidden since Firestore is removed) -->
+        <!-- User ID Display (Hidden since local storage is used) -->
         <div id="user-id-display-container" class="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
             Game state saved locally in your browser storage.
         </div>
