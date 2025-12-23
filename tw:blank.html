@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tw:blank</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'TT Firs Neue', 'Montserrat', sans-serif;
+            background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-style {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .input-style:focus {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: #06b6d4;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+            outline: none;
+        }
+
+        .btn-launch {
+            background: linear-gradient(135deg, #22d3ee, #3b82f6);
+            color: white;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-launch:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-launch:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .status-container {
+            height: 20px;
+            margin-top: 1.5rem;
+        }
+
+        .status-msg {
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(5px);
+        }
+
+        .status-msg.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        ::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .brand-icon {
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center">
+        <div class="mb-8">
+            <div class="w-16 h-16 brand-icon rounded-2xl mx-auto flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+            </div>
+            <h1 class="text-4xl font-extrabold tracking-tight mb-1 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                tw:blank
+            </h1>
+            <p id="subheading" class="text-gray-400 text-xs font-semibold uppercase tracking-widest">Privacy Launcher</p>
+        </div>
+
+        <div class="space-y-4">
+            <input 
+                type="text" 
+                id="urlInput" 
+                placeholder="Enter website URL..." 
+                class="w-full input-style rounded-xl px-5 py-4 text-base"
+            >
+
+            <button 
+                onclick="launchLink()"
+                class="w-full btn-launch py-4 rounded-xl text-base uppercase tracking-wider"
+            >
+                Launch
+            </button>
+
+            <!-- Only shown if the user needs to hide their history from the current tab -->
+            <button 
+                id="historyBtn"
+                onclick="cleanCurrentTab()"
+                class="hidden w-full btn-secondary py-2 rounded-lg text-[10px] uppercase tracking-widest font-bold"
+            >
+                Clean History
+            </button>
+        </div>
+
+        <div class="status-container">
+            <div id="status" class="status-msg text-xs font-bold uppercase tracking-tighter"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check if we are already in about:blank
+        const isCloaked = window.location.href === 'about:blank';
+
+        window.onload = function() {
+            if (!isCloaked) {
+                // If not cloaked, try to auto-cloak
+                autoCloak();
+                document.getElementById('historyBtn').classList.remove('hidden');
+                document.getElementById('subheading').innerText = "Launcher Active (Uncloaked)";
+            } else {
+                document.getElementById('subheading').innerText = "Launcher Active (Cloaked)";
+            }
+        };
+
+        function autoCloak() {
+            try {
+                const newWin = window.open('about:blank', '_blank');
+                if (newWin) {
+                    const doc = newWin.document;
+                    const html = document.documentElement.outerHTML;
+                    
+                    doc.open();
+                    doc.write(html);
+                    doc.close();
+                    showStatus("Auto-Cloaked in new tab", "text-green-400");
+                }
+            } catch (e) {
+                showStatus("Auto-Cloak Blocked", "text-yellow-500");
+            }
+        }
+
+        function cleanCurrentTab() {
+            // Redirects current tab to a generic page to remove launcher from history
+            window.location.replace('https://google.com');
+        }
+
+        function launchLink() {
+            const input = document.getElementById('urlInput').value.trim();
+            
+            if (!input) {
+                showStatus("Enter a URL", "text-cyan-400");
+                return;
+            }
+
+            let targetUrl = input;
+            if (!/^https?:\/\//i.test(targetUrl)) {
+                targetUrl = 'https://' + targetUrl;
+            }
+
+            try {
+                const newWin = window.open('about:blank', '_blank');
+                if (newWin) {
+                    showStatus("Redirecting...", "text-blue-400");
+                    newWin.location.replace(targetUrl);
+                } else {
+                    showStatus("Popup Blocked", "text-yellow-500");
+                }
+            } catch (e) {
+                showStatus("Error", "text-red-400");
+            }
+        }
+
+        function showStatus(msg, colorClass) {
+            const status = document.getElementById('status');
+            status.innerText = msg;
+            status.className = `status-msg text-xs font-bold uppercase tracking-tighter ${colorClass} show`;
+            
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 3000);
+        }
+
+        document.getElementById('urlInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') launchLink();
+        });
+    </script>
+</body>
+</html>
+
