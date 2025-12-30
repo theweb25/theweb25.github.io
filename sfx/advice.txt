@@ -1,0 +1,15 @@
+design stuff
+always make the bg has a hint of a glowing blue
+make sure these sound effects are always used around the app
+enter: son0ra.github.io/sfx/enter.mp3 , when another page of the app is opened
+error: son0ra.github.io/sfx/error.mp3 , when an error occurs
+hover: son0ra.github.io/sfx/hover.mp3 , when a button or another link is touching the cursor
+success: son0ra.github.io/sfx/success.mp3 , when an action succeeds
+notice: son0ra.github.io/sfx/notice.mp3 , just a notification. not an error or a success.
+these links will be used and coded into the app , corresponding to the action
+-- ui elements
+a notification will slide in from the bottom right, sliding from the right, showing an error or a notice.
+make sure not to brag about "special" elements like glassmorphism and anything i mention to you.
+if i say make something better, do not add "but better" to the title, and anything similar, unless i tell you to change it.
+if i do not ask for a different font, form it into a mix of poppins and lexend.
+add a few gradients, too
