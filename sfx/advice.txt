@@ -13,3 +13,5 @@ make sure not to brag about "special" elements like glassmorphism and anything i
 if i say make something better, do not add "but better" to the title, and anything similar, unless i tell you to change it.
 if i do not ask for a different font, form it into a mix of poppins and lexend.
 add a few gradients, too
+add animations to anything you can add them too, without it looking to tacky
+make the accent color BLUEE.
