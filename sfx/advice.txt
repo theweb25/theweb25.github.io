@@ -15,3 +15,4 @@ if i do not ask for a different font, form it into a mix of poppins and lexend.
 add a few gradients, too
 add animations to anything you can add them too, without it looking to tacky
 make the accent color BLUEE.
+please take the elements out of the box. you cannot put it into a container. 
