@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Music Player</title>
+    <style>
+        :root {
+            --accent: #ff8c00;
+            --black: #000000;
+            --gray: #1a1a1a;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--black);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: monospace;
+            -webkit-tap-highlight-color: transparent;
+            text-transform: uppercase;
+        }
+
+        body {
+            background-color: var(--black);
+            color: var(--accent);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            padding: 20px;
+            border-bottom: 1px solid var(--accent);
+        }
+
+        .top-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .now-playing {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .controls-top {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: none;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        button:active {
+            background: var(--accent);
+            color: var(--black);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            border-color: #444;
+            color: #444;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        #progress-bar {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        #playlist {
+            flex-grow: 1;
+            overflow-y: auto;
+            list-style: none;
+            padding: 10px;
+        }
+
+        .song-item {
+            padding: 12px;
+            border: 1px solid #333;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .song-item .track-info {
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .song-item.active {
+            border-color: var(--accent);
+            background: var(--gray);
+        }
+
+        .needs-link {
+            color: #ff4500;
+            font-size: 0.7rem;
+            display: block;
+        }
+
+        .full-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--black);
+            z-index: 100;
+            flex-direction: column;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        #lyrics-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 1.5rem;
+            line-height: 1.6;
+            padding: 20px 0;
+        }
+
+        .lyric-line {
+            margin: 15px 0;
+            opacity: 0.4;
+        }
+
+        .lyric-line.highlight {
+            opacity: 1;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5rem;
+            border: none;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        .editor-container {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .editor-input {
+            background: var(--gray);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+            font-size: 1.1rem;
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+
+        .color-presets {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 1px solid white;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .input-label {
+            display: inline-block;
+            border: 1px solid var(--accent);
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        #save-status {
+            font-size: 0.7rem;
+            height: 1em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="top-info">
+        <span id="current-date">--/--/--</span>
+        <span id="current-time">00:00:00</span>
+    </div>
+
+    <div class="now-playing" id="track-title">NO TRACK SELECTED</div>
+    
+    <div class="controls-top">
+        <label class="input-label" for="audio-upload">ADD AUDIO</label>
+        <input type="file" id="audio-upload" accept="audio/*">
+        
+        <label class="input-label" for="lrc-upload">ADD LRC</label>
+        <input type="file" id="lrc-upload" accept=".lrc">
+        
+        <button id="edit-btn" disabled>EDIT INFO</button>
+        <button id="lyrics-btn" disabled>LYRICS</button>
+        <button id="theme-btn">THEME</button>
+        <button id="save-btn">SAVE LIST</button>
+    </div>
+
+    <div class="main-player-controls">
+        <button id="prev-btn">PREV</button>
+        <button id="play-pause-btn">PLAY</button>
+        <button id="next-btn">NEXT</button>
+        <button id="clear-btn" style="border-color: #600; color: #a00;">RESET</button>
+    </div>
+
+    <div class="progress-container">
+        <input type="range" id="progress-bar" value="0" min="0" step="1">
+    </div>
+    <div id="time-display">00:00 / 00:00</div>
+    <div id="save-status"></div>
+</header>
+
+<ul id="playlist"></ul>
+
+<div id="lyrics-overlay" class="full-overlay">
+    <button class="close-btn" id="close-lyrics">X</button>
+    <div id="lyrics-content"></div>
+</div>
+
+<div id="editor-overlay" class="full-overlay">
+    <button class="close-btn" id="close-editor">X</button>
+    
+    <div id="meta-section" class="editor-container">
+        <h2>EDIT METADATA</h2>
+        <p>TRACK NAME:</p>
+        <input type="text" id="edit-name-input" class="editor-input">
+        <button id="apply-edit-btn">APPLY NAME</button>
+    </div>
+
+    <div id="theme-section" class="editor-container" style="display:none;">
+        <h2>ACCENT COLOR</h2>
+        <div class="color-presets">
+            <div class="color-swatch" style="background:#ff8c00;" data-color="#ff8c00"></div>
+            <div class="color-swatch" style="background:#00ffcc;" data-color="#00ffcc"></div>
+            <div class="color-swatch" style="background:#ff00ff;" data-color="#ff00ff"></div>
+            <div class="color-swatch" style="background:#ffffff;" data-color="#ffffff"></div>
+            <div class="color-swatch" style="background:#ff4444;" data-color="#ff4444"></div>
+        </div>
+        <p>CUSTOM HEX:</p>
+        <input type="text" id="hex-input" class="editor-input" placeholder="#FFFFFF">
+        <button id="auto-accent-btn">AUTO ACCENT: OFF</button>
+    </div>
+</div>
+
+<audio id="audio-element"></audio>
+
+<script>
+    const audio = document.getElementById('audio-element');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const trackTitle = document.getElementById('track-title');
+    const progressBar = document.getElementById('progress-bar');
+    const timeDisplay = document.getElementById('time-display');
+    const playlistEl = document.getElementById('playlist');
+    const lyricsBtn = document.getElementById('lyrics-btn');
+    const editBtn = document.getElementById('edit-btn');
+    const themeBtn = document.getElementById('theme-btn');
+    const lyricsOverlay = document.getElementById('lyrics-overlay');
+    const editorOverlay = document.getElementById('editor-overlay');
+    const lyricsContent = document.getElementById('lyrics-content');
+    const audioUpload = document.getElementById('audio-upload');
+    const lrcUpload = document.getElementById('lrc-upload');
+    const saveBtn = document.getElementById('save-btn');
+    const saveStatus = document.getElementById('save-status');
+    const editNameInput = document.getElementById('edit-name-input');
+    const applyEditBtn = document.getElementById('apply-edit-btn');
+    const hexInput = document.getElementById('hex-input');
+    const autoAccentBtn = document.getElementById('auto-accent-btn');
+
+    let playlist = [];
+    let currentIndex = -1;
+    let autoAccent = false;
+
+    // --- Persistence Functions ---
+    function saveAllToStorage() {
+        const dataToSave = playlist.map(item => ({ name: item.name, lyrics: item.lyrics }));
+        localStorage.setItem('minimal_player_playlist', JSON.stringify(dataToSave));
+        localStorage.setItem('player_auto_accent', autoAccent);
+        // Only save current manual accent if auto is off
+        if (!autoAccent) {
+            localStorage.setItem('player_accent', document.documentElement.style.getPropertyValue('--accent'));
+        }
+    }
+
+    function showStatus(msg) {
+        saveStatus.innerText = msg;
+        setTimeout(() => saveStatus.innerText = "", 3000);
+    }
+
+    // --- Time & Date ---
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('current-time').innerText = now.toLocaleTimeString();
+        document.getElementById('current-date').innerText = now.toLocaleDateString();
+        
+        if (autoAccent) {
+            const hour = now.getHours();
+            const themeColor = (hour >= 6 && hour < 18) ? "#ffffff" : "#ff4444";
+            setAccent(themeColor, false);
+        }
+    }
+
+    window.onload = () => {
+        // Load Accent/Theme
+        autoAccent = localStorage.getItem('player_auto_accent') === 'true';
+        autoAccentBtn.innerText = `AUTO ACCENT: ${autoAccent ? 'ON' : 'OFF'}`;
+        
+        const savedAccent = localStorage.getItem('player_accent');
+        if (savedAccent && !autoAccent) setAccent(savedAccent, false);
+
+        // Load Playlist
+        const savedPlaylist = localStorage.getItem('minimal_player_playlist');
+        if (savedPlaylist) {
+            try {
+                playlist = JSON.parse(savedPlaylist).map(item => ({ ...item, url: null }));
+                updateUI();
+            } catch (e) { console.error("Error loading playlist"); }
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    };
+
+    function setAccent(color, save = true) {
+        document.documentElement.style.setProperty('--accent', color);
+        if (save && !autoAccent) {
+            localStorage.setItem('player_accent', color);
+        }
+    }
+
+    saveBtn.onclick = () => {
+        saveAllToStorage();
+        showStatus("ALL SETTINGS SAVED");
+    };
+
+    function updateUI() {
+        playlistEl.innerHTML = '';
+        playlist.forEach((track, index) => {
+            const li = document.createElement('li');
+            li.className = `song-item ${index === currentIndex ? 'active' : ''}`;
+            
+            const info = document.createElement('div');
+            info.className = 'track-info';
+            info.innerHTML = `<span>${track.name}</span>${!track.url ? '<span class="needs-link">[LINK FILE]</span>' : ''}`;
+            
+            const btn = document.createElement('button');
+            btn.innerText = track.url ? "LOAD" : "LINK";
+            btn.onclick = () => {
+                if (track.url) playTrack(index);
+                else { currentIndex = index; audioUpload.click(); }
+            };
+
+            li.appendChild(info);
+            li.appendChild(btn);
+            playlistEl.appendChild(li);
+        });
+
+        if (currentIndex > -1) {
+            trackTitle.innerText = playlist[currentIndex].name;
+            lyricsBtn.disabled = !playlist[currentIndex].lyrics;
+            editBtn.disabled = false;
+        }
+    }
+
+    // --- Overlays ---
+    editBtn.onclick = () => {
+        document.getElementById('meta-section').style.display = 'flex';
+        document.getElementById('theme-section').style.display = 'none';
+        editNameInput.value = playlist[currentIndex].name;
+        editorOverlay.style.display = 'flex';
+    };
+
+    themeBtn.onclick = () => {
+        document.getElementById('meta-section').style.display = 'none';
+        document.getElementById('theme-section').style.display = 'flex';
+        editorOverlay.style.display = 'flex';
+    };
+
+    document.getElementById('close-editor').onclick = () => editorOverlay.style.display = 'none';
+
+    // --- Editor Actions ---
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.onclick = () => {
+            autoAccent = false;
+            autoAccentBtn.innerText = "AUTO ACCENT: OFF";
+            setAccent(swatch.dataset.color);
+            saveAllToStorage();
+        };
+    });
+
+    hexInput.oninput = (e) => {
+        const val = e.target.value;
+        if (val.length === 7 && val.startsWith('#')) {
+            autoAccent = false;
+            autoAccentBtn.innerText = "AUTO ACCENT: OFF";
+            setAccent(val);
+            saveAllToStorage();
+        }
+    };
+
+    autoAccentBtn.onclick = () => {
+        autoAccent = !autoAccent;
+        autoAccentBtn.innerText = `AUTO ACCENT: ${autoAccent ? 'ON' : 'OFF'}`;
+        saveAllToStorage();
+        updateClock();
+    };
+
+    applyEditBtn.onclick = () => {
+        const newName = editNameInput.value.trim();
+        if (newName && currentIndex > -1) {
+            playlist[currentIndex].name = newName;
+            updateUI();
+            saveAllToStorage();
+            editorOverlay.style.display = 'none';
+        }
+    };
+
+    // --- Audio Logic ---
+    audioUpload.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const name = file.name.replace(/\.[^/.]+$/, "");
+
+        if (currentIndex > -1 && !playlist[currentIndex].url) {
+            playlist[currentIndex].url = url;
+            if (!playlist[currentIndex].name) playlist[currentIndex].name = name;
+            playTrack(currentIndex);
+        } else {
+            playlist.push({ name, url, lyrics: null });
+            if (currentIndex === -1) playTrack(playlist.length - 1);
+        }
+        updateUI();
+        saveAllToStorage();
+    };
+
+    lrcUpload.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file || currentIndex === -1) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            playlist[currentIndex].lyrics = parseLRC(event.target.result);
+            updateUI();
+            saveAllToStorage();
+        };
+        reader.readAsText(file);
+    };
+
+    function parseLRC(lrcText) {
+        const lines = lrcText.split('\n');
+        const result = [];
+        const timeReg = /\[(\d+):(\d+\.\d+)\]/;
+        lines.forEach(line => {
+            const match = timeReg.exec(line);
+            if (match) {
+                result.push({ 
+                    time: parseFloat(match[1]) * 60 + parseFloat(match[2]), 
+                    text: line.replace(timeReg, '').trim() 
+                });
+            }
+        });
+        return result.sort((a, b) => a.time - b.time);
+    }
+
+    function playTrack(index) {
+        if (index < 0 || index >= playlist.length || !playlist[index].url) return;
+        currentIndex = index;
+        audio.src = playlist[currentIndex].url;
+        audio.play();
+        playPauseBtn.innerText = "PAUSE";
+        updateUI();
+    }
+
+    playPauseBtn.onclick = () => {
+        if (!audio.src) return;
+        if (audio.paused) { audio.play(); playPauseBtn.innerText = "PAUSE"; }
+        else { audio.pause(); playPauseBtn.innerText = "PLAY"; }
+    };
+
+    document.getElementById('next-btn').onclick = () => playTrack((currentIndex + 1) % playlist.length);
+    document.getElementById('prev-btn').onclick = () => playTrack((currentIndex - 1 + playlist.length) % playlist.length);
+
+    document.getElementById('clear-btn').onclick = () => {
+        if(confirm("WIPE ALL SAVED DATA?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    };
+
+    audio.ontimeupdate = () => {
+        if (!isNaN(audio.duration)) {
+            progressBar.max = audio.duration;
+            progressBar.value = audio.currentTime;
+            const format = (t) => Math.floor(t / 60) + ":" + Math.floor(t % 60).toString().padStart(2, '0');
+            timeDisplay.innerText = `${format(audio.currentTime)} / ${format(audio.duration)}`;
+            highlightLyrics(audio.currentTime);
+        }
+    };
+
+    progressBar.oninput = () => audio.currentTime = progressBar.value;
+
+    lyricsBtn.onclick = () => {
+        renderLyrics();
+        lyricsOverlay.style.display = 'flex';
+    };
+
+    document.getElementById('close-lyrics').onclick = () => lyricsOverlay.style.display = 'none';
+
+    function renderLyrics() {
+        const lyrics = playlist[currentIndex]?.lyrics;
+        if (!lyrics) return;
+        lyricsContent.innerHTML = '';
+        lyrics.forEach((line, idx) => {
+            const div = document.createElement('div');
+            div.className = 'lyric-line';
+            div.id = `lyric-${idx}`;
+            div.innerText = line.text || "...";
+            lyricsContent.appendChild(div);
+        });
+    }
+
+    function highlightLyrics(currentTime) {
+        const lyrics = playlist[currentIndex]?.lyrics;
+        if (!lyrics || lyricsOverlay.style.display !== 'flex') return;
+        let activeIdx = -1;
+        for (let i = 0; i < lyrics.length; i++) {
+            if (currentTime >= lyrics[i].time) activeIdx = i;
+            else break;
+        }
+        if (activeIdx !== -1) {
+            document.querySelectorAll('.lyric-line').forEach(l => l.classList.remove('highlight'));
+            const activeLine = document.getElementById(`lyric-${activeIdx}`);
+            if (activeLine) {
+                activeLine.classList.add('highlight');
+                activeLine.scrollIntoView({ behavior: 'auto', block: 'center' });
+            }
+        }
+    }
+
+    audio.onended = () => document.getElementById('next-btn').click();
+</script>
+</body>
+</html>
