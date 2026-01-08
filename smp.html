@@ -51,6 +51,11 @@
             opacity: 0.8;
         }
 
+        .info-group {
+            display: flex;
+            gap: 15px;
+        }
+
         .now-playing {
             font-size: 1.2rem;
             margin-bottom: 10px;
@@ -156,12 +161,18 @@
             font-size: 1.5rem;
             line-height: 1.6;
             padding: 20px 0;
-            text-transform: none; /* No capitalization for lyrics */
+            text-transform: none;
         }
 
         .lyric-line {
             margin: 15px 0;
             opacity: 0.4;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .lyric-line:hover {
+            opacity: 0.8;
         }
 
         .lyric-line.highlight {
@@ -251,7 +262,10 @@
 <header>
     <div class="top-info">
         <span id="current-date">--/--/--</span>
-        <span id="current-time">00:00:00</span>
+        <div class="info-group">
+            <span id="battery-status">BAT: --%</span>
+            <span id="current-time">00:00:00</span>
+        </div>
     </div>
 
     <div class="now-playing" id="track-title">NO TRACK SELECTED</div>
@@ -346,6 +360,7 @@
     const hexInput = document.getElementById('hex-input');
     const autoAccentBtn = document.getElementById('auto-accent-btn');
     const metaDisplay = document.getElementById('meta-display');
+    const batteryStatus = document.getElementById('battery-status');
 
     let playlist = [];
     let currentIndex = -1;
@@ -375,6 +390,26 @@
         }
     }
 
+    async function updateBattery() {
+        if ('getBattery' in navigator) {
+            try {
+                const battery = await navigator.getBattery();
+                const updateInfo = () => {
+                    const level = Math.round(battery.level * 100);
+                    const charging = battery.charging ? "+" : "";
+                    batteryStatus.innerText = `BAT: ${level}%${charging}`;
+                };
+                updateInfo();
+                battery.addEventListener('levelchange', updateInfo);
+                battery.addEventListener('chargingchange', updateInfo);
+            } catch (e) {
+                batteryStatus.style.display = 'none';
+            }
+        } else {
+            batteryStatus.style.display = 'none';
+        }
+    }
+
     window.onload = () => {
         autoAccent = localStorage.getItem('player_auto_accent') === 'true';
         autoAccentBtn.innerText = `AUTO ACCENT: ${autoAccent ? 'ON' : 'OFF'}`;
@@ -389,6 +424,7 @@
         }
         setInterval(updateClock, 1000);
         updateClock();
+        updateBattery();
     };
 
     function setAccent(color, save = true) {
@@ -585,6 +621,10 @@
             d.className = 'lyric-line';
             d.id = `lyric-${idx}`;
             d.innerText = line.text || "...";
+            d.onclick = () => {
+                audio.currentTime = line.time;
+                if (audio.paused) audio.play();
+            };
             lyricsContent.appendChild(d);
         });
     }
