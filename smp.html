@@ -26,7 +26,6 @@
             padding: 0;
             font-family: monospace;
             -webkit-tap-highlight-color: transparent;
-            text-transform: uppercase;
         }
 
         body {
@@ -36,6 +35,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
+            text-transform: uppercase;
         }
 
         header {
@@ -73,6 +73,7 @@
             padding: 8px 12px;
             cursor: pointer;
             font-size: 0.9rem;
+            text-transform: uppercase;
         }
 
         button:active {
@@ -155,6 +156,7 @@
             font-size: 1.5rem;
             line-height: 1.6;
             padding: 20px 0;
+            text-transform: none; /* No capitalization for lyrics */
         }
 
         .lyric-line {
@@ -223,6 +225,18 @@
             border: 1px solid var(--accent);
             padding: 8px 12px;
             cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        #meta-display {
+            text-align: left;
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border: 1px solid var(--accent);
+            padding: 15px;
+            background: var(--gray);
+            font-size: 0.9rem;
         }
 
         #save-status {
@@ -251,6 +265,7 @@
         
         <button id="edit-btn" disabled>EDIT INFO</button>
         <button id="lyrics-btn" disabled>LYRICS</button>
+        <button id="data-btn" disabled>FILE DATA</button>
         <button id="theme-btn">THEME</button>
         <button id="save-btn">SAVE LIST</button>
     </div>
@@ -280,10 +295,15 @@
     <button class="close-btn" id="close-editor">X</button>
     
     <div id="meta-section" class="editor-container">
-        <h2>EDIT METADATA</h2>
-        <p>TRACK NAME:</p>
-        <input type="text" id="edit-name-input" class="editor-input">
-        <button id="apply-edit-btn">APPLY NAME</button>
+        <h2 id="editor-title">EDIT METADATA</h2>
+        <div id="edit-fields" style="width:100%; display: flex; flex-direction: column; align-items: center;">
+            <p>TRACK NAME:</p>
+            <input type="text" id="edit-name-input" class="editor-input">
+            <button id="apply-edit-btn" style="margin-top:10px;">APPLY NAME</button>
+        </div>
+        <div id="data-fields" style="display:none; width:100%;">
+            <div id="meta-display"></div>
+        </div>
     </div>
 
     <div id="theme-section" class="editor-container" style="display:none;">
@@ -312,6 +332,7 @@
     const playlistEl = document.getElementById('playlist');
     const lyricsBtn = document.getElementById('lyrics-btn');
     const editBtn = document.getElementById('edit-btn');
+    const dataBtn = document.getElementById('data-btn');
     const themeBtn = document.getElementById('theme-btn');
     const lyricsOverlay = document.getElementById('lyrics-overlay');
     const editorOverlay = document.getElementById('editor-overlay');
@@ -324,13 +345,14 @@
     const applyEditBtn = document.getElementById('apply-edit-btn');
     const hexInput = document.getElementById('hex-input');
     const autoAccentBtn = document.getElementById('auto-accent-btn');
+    const metaDisplay = document.getElementById('meta-display');
 
     let playlist = [];
     let currentIndex = -1;
     let autoAccent = false;
 
     function saveAllToStorage() {
-        const data = playlist.map(item => ({ name: item.name, lyrics: item.lyrics }));
+        const data = playlist.map(item => ({ name: item.name, lyrics: item.lyrics, fileMeta: item.fileMeta }));
         localStorage.setItem('minimal_player_playlist', JSON.stringify(data));
         localStorage.setItem('player_auto_accent', autoAccent);
         if (!autoAccent) {
@@ -347,7 +369,6 @@
         const now = new Date();
         document.getElementById('current-time').innerText = now.toLocaleTimeString();
         document.getElementById('current-date').innerText = now.toLocaleDateString();
-        
         if (autoAccent) {
             const h = now.getHours();
             setAccent((h >= 6 && h < 18) ? "#ffffff" : "#ff4444", false);
@@ -357,10 +378,8 @@
     window.onload = () => {
         autoAccent = localStorage.getItem('player_auto_accent') === 'true';
         autoAccentBtn.innerText = `AUTO ACCENT: ${autoAccent ? 'ON' : 'OFF'}`;
-        
         const savedAccent = localStorage.getItem('player_accent');
         if (savedAccent && !autoAccent) setAccent(savedAccent, false);
-
         const savedPlaylist = localStorage.getItem('minimal_player_playlist');
         if (savedPlaylist) {
             try {
@@ -368,7 +387,6 @@
                 updateUI();
             } catch (e) {}
         }
-
         setInterval(updateClock, 1000);
         updateClock();
     };
@@ -405,13 +423,29 @@
             trackTitle.innerText = playlist[currentIndex].name;
             lyricsBtn.disabled = !playlist[currentIndex].lyrics;
             editBtn.disabled = false;
+            dataBtn.disabled = !playlist[currentIndex].fileMeta;
         }
     }
 
     editBtn.onclick = () => {
         document.getElementById('meta-section').style.display = 'flex';
         document.getElementById('theme-section').style.display = 'none';
+        document.getElementById('edit-fields').style.display = 'flex';
+        document.getElementById('data-fields').style.display = 'none';
+        document.getElementById('editor-title').innerText = "EDIT METADATA";
         editNameInput.value = playlist[currentIndex].name;
+        editorOverlay.style.display = 'flex';
+    };
+
+    dataBtn.onclick = () => {
+        const meta = playlist[currentIndex]?.fileMeta;
+        if (!meta) return;
+        document.getElementById('meta-section').style.display = 'flex';
+        document.getElementById('theme-section').style.display = 'none';
+        document.getElementById('edit-fields').style.display = 'none';
+        document.getElementById('data-fields').style.display = 'block';
+        document.getElementById('editor-title').innerText = "FILE DATA";
+        metaDisplay.innerHTML = Object.entries(meta).map(([k, v]) => `<div>${k.replace(/([A-Z])/g, ' $1')}: ${v}</div>`).join('');
         editorOverlay.style.display = 'flex';
     };
 
@@ -459,17 +493,25 @@
         }
     };
 
-    audioUpload.onchange = (e) => {
+    audioUpload.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const url = URL.createObjectURL(file);
         const name = file.name.replace(/\.[^/.]+$/, "");
+        
+        const fileMeta = {
+            size: (file.size / 1024 / 1024).toFixed(2) + " MB",
+            type: file.type || "UNKNOWN",
+            lastModified: new Date(file.lastModified).toLocaleDateString()
+        };
+
         if (currentIndex > -1 && !playlist[currentIndex].url) {
             playlist[currentIndex].url = url;
+            playlist[currentIndex].fileMeta = fileMeta;
             if (!playlist[currentIndex].name) playlist[currentIndex].name = name;
             playTrack(currentIndex);
         } else {
-            playlist.push({ name, url, lyrics: null });
+            playlist.push({ name, url, fileMeta, lyrics: null });
             if (currentIndex === -1) playTrack(playlist.length - 1);
         }
         updateUI();
@@ -516,12 +558,8 @@
 
     document.getElementById('next-btn').onclick = () => playTrack((currentIndex + 1) % playlist.length);
     document.getElementById('prev-btn').onclick = () => playTrack((currentIndex - 1 + playlist.length) % playlist.length);
-
     document.getElementById('clear-btn').onclick = () => {
-        if(confirm("WIPE ALL DATA?")) {
-            localStorage.clear();
-            location.reload();
-        }
+        if(confirm("WIPE ALL DATA?")) { localStorage.clear(); location.reload(); }
     };
 
     audio.ontimeupdate = () => {
@@ -535,12 +573,7 @@
     };
 
     progressBar.oninput = () => audio.currentTime = progressBar.value;
-
-    lyricsBtn.onclick = () => {
-        renderLyrics();
-        lyricsOverlay.style.display = 'flex';
-    };
-
+    lyricsBtn.onclick = () => { renderLyrics(); lyricsOverlay.style.display = 'flex'; };
     document.getElementById('close-lyrics').onclick = () => lyricsOverlay.style.display = 'none';
 
     function renderLyrics() {
