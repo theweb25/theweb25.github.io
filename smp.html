@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Music Player</title>
     <style>
         :root {
             --accent: #ff8c00;
@@ -11,7 +10,6 @@
             --gray: #1a1a1a;
         }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -20,7 +18,6 @@
         }
         ::-webkit-scrollbar-thumb {
             background: var(--accent);
-            border-radius: 0;
         }
 
         * {
@@ -199,7 +196,6 @@
             width: 100%;
             max-width: 400px;
             font-size: 1.1rem;
-            font-family: monospace;
             text-transform: uppercase;
         }
 
@@ -333,12 +329,10 @@
     let currentIndex = -1;
     let autoAccent = false;
 
-    // --- Persistence Functions ---
     function saveAllToStorage() {
-        const dataToSave = playlist.map(item => ({ name: item.name, lyrics: item.lyrics }));
-        localStorage.setItem('minimal_player_playlist', JSON.stringify(dataToSave));
+        const data = playlist.map(item => ({ name: item.name, lyrics: item.lyrics }));
+        localStorage.setItem('minimal_player_playlist', JSON.stringify(data));
         localStorage.setItem('player_auto_accent', autoAccent);
-        // Only save current manual accent if auto is off
         if (!autoAccent) {
             localStorage.setItem('player_accent', document.documentElement.style.getPropertyValue('--accent'));
         }
@@ -349,34 +343,30 @@
         setTimeout(() => saveStatus.innerText = "", 3000);
     }
 
-    // --- Time & Date ---
     function updateClock() {
         const now = new Date();
         document.getElementById('current-time').innerText = now.toLocaleTimeString();
         document.getElementById('current-date').innerText = now.toLocaleDateString();
         
         if (autoAccent) {
-            const hour = now.getHours();
-            const themeColor = (hour >= 6 && hour < 18) ? "#ffffff" : "#ff4444";
-            setAccent(themeColor, false);
+            const h = now.getHours();
+            setAccent((h >= 6 && h < 18) ? "#ffffff" : "#ff4444", false);
         }
     }
 
     window.onload = () => {
-        // Load Accent/Theme
         autoAccent = localStorage.getItem('player_auto_accent') === 'true';
         autoAccentBtn.innerText = `AUTO ACCENT: ${autoAccent ? 'ON' : 'OFF'}`;
         
         const savedAccent = localStorage.getItem('player_accent');
         if (savedAccent && !autoAccent) setAccent(savedAccent, false);
 
-        // Load Playlist
         const savedPlaylist = localStorage.getItem('minimal_player_playlist');
         if (savedPlaylist) {
             try {
                 playlist = JSON.parse(savedPlaylist).map(item => ({ ...item, url: null }));
                 updateUI();
-            } catch (e) { console.error("Error loading playlist"); }
+            } catch (e) {}
         }
 
         setInterval(updateClock, 1000);
@@ -385,9 +375,7 @@
 
     function setAccent(color, save = true) {
         document.documentElement.style.setProperty('--accent', color);
-        if (save && !autoAccent) {
-            localStorage.setItem('player_accent', color);
-        }
+        if (save && !autoAccent) localStorage.setItem('player_accent', color);
     }
 
     saveBtn.onclick = () => {
@@ -400,23 +388,19 @@
         playlist.forEach((track, index) => {
             const li = document.createElement('li');
             li.className = `song-item ${index === currentIndex ? 'active' : ''}`;
-            
             const info = document.createElement('div');
             info.className = 'track-info';
             info.innerHTML = `<span>${track.name}</span>${!track.url ? '<span class="needs-link">[LINK FILE]</span>' : ''}`;
-            
             const btn = document.createElement('button');
             btn.innerText = track.url ? "LOAD" : "LINK";
             btn.onclick = () => {
                 if (track.url) playTrack(index);
                 else { currentIndex = index; audioUpload.click(); }
             };
-
             li.appendChild(info);
             li.appendChild(btn);
             playlistEl.appendChild(li);
         });
-
         if (currentIndex > -1) {
             trackTitle.innerText = playlist[currentIndex].name;
             lyricsBtn.disabled = !playlist[currentIndex].lyrics;
@@ -424,7 +408,6 @@
         }
     }
 
-    // --- Overlays ---
     editBtn.onclick = () => {
         document.getElementById('meta-section').style.display = 'flex';
         document.getElementById('theme-section').style.display = 'none';
@@ -440,7 +423,6 @@
 
     document.getElementById('close-editor').onclick = () => editorOverlay.style.display = 'none';
 
-    // --- Editor Actions ---
     document.querySelectorAll('.color-swatch').forEach(swatch => {
         swatch.onclick = () => {
             autoAccent = false;
@@ -477,13 +459,11 @@
         }
     };
 
-    // --- Audio Logic ---
     audioUpload.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const url = URL.createObjectURL(file);
         const name = file.name.replace(/\.[^/.]+$/, "");
-
         if (currentIndex > -1 && !playlist[currentIndex].url) {
             playlist[currentIndex].url = url;
             if (!playlist[currentIndex].name) playlist[currentIndex].name = name;
@@ -508,25 +488,20 @@
         reader.readAsText(file);
     };
 
-    function parseLRC(lrcText) {
-        const lines = lrcText.split('\n');
-        const result = [];
-        const timeReg = /\[(\d+):(\d+\.\d+)\]/;
+    function parseLRC(text) {
+        const lines = text.split('\n');
+        const res = [];
+        const reg = /\[(\d+):(\d+\.\d+)\]/;
         lines.forEach(line => {
-            const match = timeReg.exec(line);
-            if (match) {
-                result.push({ 
-                    time: parseFloat(match[1]) * 60 + parseFloat(match[2]), 
-                    text: line.replace(timeReg, '').trim() 
-                });
-            }
+            const m = reg.exec(line);
+            if (m) res.push({ time: parseFloat(m[1]) * 60 + parseFloat(m[2]), text: line.replace(reg, '').trim() });
         });
-        return result.sort((a, b) => a.time - b.time);
+        return res.sort((a, b) => a.time - b.time);
     }
 
-    function playTrack(index) {
-        if (index < 0 || index >= playlist.length || !playlist[index].url) return;
-        currentIndex = index;
+    function playTrack(idx) {
+        if (idx < 0 || idx >= playlist.length || !playlist[idx].url) return;
+        currentIndex = idx;
         audio.src = playlist[currentIndex].url;
         audio.play();
         playPauseBtn.innerText = "PAUSE";
@@ -543,7 +518,7 @@
     document.getElementById('prev-btn').onclick = () => playTrack((currentIndex - 1 + playlist.length) % playlist.length);
 
     document.getElementById('clear-btn').onclick = () => {
-        if(confirm("WIPE ALL SAVED DATA?")) {
+        if(confirm("WIPE ALL DATA?")) {
             localStorage.clear();
             location.reload();
         }
@@ -553,8 +528,8 @@
         if (!isNaN(audio.duration)) {
             progressBar.max = audio.duration;
             progressBar.value = audio.currentTime;
-            const format = (t) => Math.floor(t / 60) + ":" + Math.floor(t % 60).toString().padStart(2, '0');
-            timeDisplay.innerText = `${format(audio.currentTime)} / ${format(audio.duration)}`;
+            const fmt = (t) => Math.floor(t / 60) + ":" + Math.floor(t % 60).toString().padStart(2, '0');
+            timeDisplay.innerText = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`;
             highlightLyrics(audio.currentTime);
         }
     };
@@ -569,32 +544,32 @@
     document.getElementById('close-lyrics').onclick = () => lyricsOverlay.style.display = 'none';
 
     function renderLyrics() {
-        const lyrics = playlist[currentIndex]?.lyrics;
-        if (!lyrics) return;
+        const l = playlist[currentIndex]?.lyrics;
+        if (!l) return;
         lyricsContent.innerHTML = '';
-        lyrics.forEach((line, idx) => {
-            const div = document.createElement('div');
-            div.className = 'lyric-line';
-            div.id = `lyric-${idx}`;
-            div.innerText = line.text || "...";
-            lyricsContent.appendChild(div);
+        l.forEach((line, idx) => {
+            const d = document.createElement('div');
+            d.className = 'lyric-line';
+            d.id = `lyric-${idx}`;
+            d.innerText = line.text || "...";
+            lyricsContent.appendChild(d);
         });
     }
 
-    function highlightLyrics(currentTime) {
-        const lyrics = playlist[currentIndex]?.lyrics;
-        if (!lyrics || lyricsOverlay.style.display !== 'flex') return;
-        let activeIdx = -1;
-        for (let i = 0; i < lyrics.length; i++) {
-            if (currentTime >= lyrics[i].time) activeIdx = i;
+    function highlightLyrics(curr) {
+        const l = playlist[currentIndex]?.lyrics;
+        if (!l || lyricsOverlay.style.display !== 'flex') return;
+        let idx = -1;
+        for (let i = 0; i < l.length; i++) {
+            if (curr >= l[i].time) idx = i;
             else break;
         }
-        if (activeIdx !== -1) {
-            document.querySelectorAll('.lyric-line').forEach(l => l.classList.remove('highlight'));
-            const activeLine = document.getElementById(`lyric-${activeIdx}`);
-            if (activeLine) {
-                activeLine.classList.add('highlight');
-                activeLine.scrollIntoView({ behavior: 'auto', block: 'center' });
+        if (idx !== -1) {
+            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('highlight'));
+            const active = document.getElementById(`lyric-${idx}`);
+            if (active) {
+                active.classList.add('highlight');
+                active.scrollIntoView({ behavior: 'auto', block: 'center' });
             }
         }
     }
