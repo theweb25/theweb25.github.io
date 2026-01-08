@@ -69,9 +69,49 @@
             gap: 10px;
             margin-bottom: 15px;
             flex-wrap: wrap;
+            position: relative;
         }
 
-        button {
+        /* Dropdown Styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--black);
+            border: 1px solid var(--accent);
+            min-width: 160px;
+            z-index: 1000;
+            top: 100%;
+            left: 0;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #222;
+            display: block;
+            text-align: left;
+            width: 100%;
+            background: none;
+            color: var(--accent);
+            border-left: none;
+            border-right: none;
+            border-top: none;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--gray);
+        }
+
+        button, .input-label {
             background: none;
             border: 1px solid var(--accent);
             color: var(--accent);
@@ -79,9 +119,10 @@
             cursor: pointer;
             font-size: 0.9rem;
             text-transform: uppercase;
+            display: inline-block;
         }
 
-        button:active {
+        button:active, .input-label:active {
             background: var(--accent);
             color: var(--black);
         }
@@ -149,7 +190,7 @@
             width: 100%;
             height: 100%;
             background: var(--black);
-            z-index: 100;
+            z-index: 200;
             flex-direction: column;
             padding: 40px 20px;
             text-align: center;
@@ -231,14 +272,6 @@
             display: none;
         }
 
-        .input-label {
-            display: inline-block;
-            border: 1px solid var(--accent);
-            padding: 8px 12px;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-
         #meta-display {
             text-align: left;
             width: 100%;
@@ -271,7 +304,13 @@
     <div class="now-playing" id="track-title">NO TRACK SELECTED</div>
     
     <div class="controls-top">
-        <label class="input-label" for="audio-upload">ADD AUDIO</label>
+        <div class="dropdown">
+            <button class="dropdown-trigger">ADD AUDIO ▼</button>
+            <div class="dropdown-content">
+                <button class="dropdown-item" onclick="document.getElementById('audio-upload').click()">FROM FILE</button>
+                <button class="dropdown-item" id="link-import-btn">FROM LINK</button>
+            </div>
+        </div>
         <input type="file" id="audio-upload" accept="audio/*">
         
         <label class="input-label" for="lrc-upload">ADD LRC</label>
@@ -320,6 +359,13 @@
         </div>
     </div>
 
+    <div id="link-section" class="editor-container" style="display:none;">
+        <h2>IMPORT VIA LINK</h2>
+        <p>ENTER AUDIO URL:</p>
+        <input type="text" id="link-input" class="editor-input" placeholder="https://example.com/song.mp3">
+        <button id="apply-link-btn" style="margin-top:10px;">IMPORT LINK</button>
+    </div>
+
     <div id="theme-section" class="editor-container" style="display:none;">
         <h2>ACCENT COLOR</h2>
         <div class="color-presets">
@@ -348,6 +394,7 @@
     const editBtn = document.getElementById('edit-btn');
     const dataBtn = document.getElementById('data-btn');
     const themeBtn = document.getElementById('theme-btn');
+    const linkImportBtn = document.getElementById('link-import-btn');
     const lyricsOverlay = document.getElementById('lyrics-overlay');
     const editorOverlay = document.getElementById('editor-overlay');
     const lyricsContent = document.getElementById('lyrics-content');
@@ -357,6 +404,8 @@
     const saveStatus = document.getElementById('save-status');
     const editNameInput = document.getElementById('edit-name-input');
     const applyEditBtn = document.getElementById('apply-edit-btn');
+    const linkInput = document.getElementById('link-input');
+    const applyLinkBtn = document.getElementById('apply-link-btn');
     const hexInput = document.getElementById('hex-input');
     const autoAccentBtn = document.getElementById('auto-accent-btn');
     const metaDisplay = document.getElementById('meta-display');
@@ -367,7 +416,13 @@
     let autoAccent = false;
 
     function saveAllToStorage() {
-        const data = playlist.map(item => ({ name: item.name, lyrics: item.lyrics, fileMeta: item.fileMeta }));
+        const data = playlist.map(item => ({ 
+            name: item.name, 
+            lyrics: item.lyrics, 
+            fileMeta: item.fileMeta,
+            isLink: item.isLink,
+            savedUrl: item.isLink ? item.url : null 
+        }));
         localStorage.setItem('minimal_player_playlist', JSON.stringify(data));
         localStorage.setItem('player_auto_accent', autoAccent);
         if (!autoAccent) {
@@ -418,7 +473,11 @@
         const savedPlaylist = localStorage.getItem('minimal_player_playlist');
         if (savedPlaylist) {
             try {
-                playlist = JSON.parse(savedPlaylist).map(item => ({ ...item, url: null }));
+                const raw = JSON.parse(savedPlaylist);
+                playlist = raw.map(item => ({
+                    ...item,
+                    url: item.isLink ? item.savedUrl : null
+                }));
                 updateUI();
             } catch (e) {}
         }
@@ -444,12 +503,19 @@
             li.className = `song-item ${index === currentIndex ? 'active' : ''}`;
             const info = document.createElement('div');
             info.className = 'track-info';
-            info.innerHTML = `<span>${track.name}</span>${!track.url ? '<span class="needs-link">[LINK FILE]</span>' : ''}`;
+            info.innerHTML = `<span>${track.name}</span>${!track.url ? '<span class="needs-link">[RE-LINK LOCAL FILE]</span>' : ''}`;
             const btn = document.createElement('button');
-            btn.innerText = track.url ? "LOAD" : "LINK";
+            btn.innerText = track.url ? "LOAD" : (track.isLink ? "LINK" : "FILE");
             btn.onclick = () => {
                 if (track.url) playTrack(index);
-                else { currentIndex = index; audioUpload.click(); }
+                else { 
+                    currentIndex = index;
+                    if (track.isLink) {
+                        openLinkImport();
+                    } else {
+                        audioUpload.click();
+                    }
+                }
             };
             li.appendChild(info);
             li.appendChild(btn);
@@ -463,9 +529,15 @@
         }
     }
 
-    editBtn.onclick = () => {
-        document.getElementById('meta-section').style.display = 'flex';
+    function hideAllEditorSections() {
+        document.getElementById('meta-section').style.display = 'none';
         document.getElementById('theme-section').style.display = 'none';
+        document.getElementById('link-section').style.display = 'none';
+    }
+
+    editBtn.onclick = () => {
+        hideAllEditorSections();
+        document.getElementById('meta-section').style.display = 'flex';
         document.getElementById('edit-fields').style.display = 'flex';
         document.getElementById('data-fields').style.display = 'none';
         document.getElementById('editor-title').innerText = "EDIT METADATA";
@@ -476,8 +548,8 @@
     dataBtn.onclick = () => {
         const meta = playlist[currentIndex]?.fileMeta;
         if (!meta) return;
+        hideAllEditorSections();
         document.getElementById('meta-section').style.display = 'flex';
-        document.getElementById('theme-section').style.display = 'none';
         document.getElementById('edit-fields').style.display = 'none';
         document.getElementById('data-fields').style.display = 'block';
         document.getElementById('editor-title').innerText = "FILE DATA";
@@ -486,10 +558,19 @@
     };
 
     themeBtn.onclick = () => {
-        document.getElementById('meta-section').style.display = 'none';
+        hideAllEditorSections();
         document.getElementById('theme-section').style.display = 'flex';
         editorOverlay.style.display = 'flex';
     };
+
+    function openLinkImport() {
+        hideAllEditorSections();
+        document.getElementById('link-section').style.display = 'flex';
+        linkInput.value = (currentIndex > -1 && playlist[currentIndex].isLink) ? playlist[currentIndex].url : "";
+        editorOverlay.style.display = 'flex';
+    }
+
+    linkImportBtn.onclick = openLinkImport;
 
     document.getElementById('close-editor').onclick = () => editorOverlay.style.display = 'none';
 
@@ -529,6 +610,28 @@
         }
     };
 
+    applyLinkBtn.onclick = () => {
+        const url = linkInput.value.trim();
+        if (!url) return;
+
+        const name = url.split('/').pop().split('?')[0] || "REMOTE TRACK";
+        const fileMeta = { source: "URL", imported: new Date().toLocaleDateString() };
+
+        if (currentIndex > -1 && playlist[currentIndex].isLink && !playlist[currentIndex].url) {
+            // Repairing an existing link track
+            playlist[currentIndex].url = url;
+            playTrack(currentIndex);
+        } else {
+            // Adding new track
+            playlist.push({ name, url, fileMeta, lyrics: null, isLink: true });
+            if (currentIndex === -1) playTrack(playlist.length - 1);
+        }
+
+        updateUI();
+        saveAllToStorage();
+        editorOverlay.style.display = 'none';
+    };
+
     audioUpload.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -541,13 +644,13 @@
             lastModified: new Date(file.lastModified).toLocaleDateString()
         };
 
-        if (currentIndex > -1 && !playlist[currentIndex].url) {
+        if (currentIndex > -1 && !playlist[currentIndex].isLink && !playlist[currentIndex].url) {
             playlist[currentIndex].url = url;
             playlist[currentIndex].fileMeta = fileMeta;
             if (!playlist[currentIndex].name) playlist[currentIndex].name = name;
             playTrack(currentIndex);
         } else {
-            playlist.push({ name, url, fileMeta, lyrics: null });
+            playlist.push({ name, url, fileMeta, lyrics: null, isLink: false });
             if (currentIndex === -1) playTrack(playlist.length - 1);
         }
         updateUI();
@@ -581,7 +684,10 @@
         if (idx < 0 || idx >= playlist.length || !playlist[idx].url) return;
         currentIndex = idx;
         audio.src = playlist[currentIndex].url;
-        audio.play();
+        audio.play().catch(err => {
+            console.error("Playback failed:", err);
+            showStatus("LOAD ERROR: CHECK LINK");
+        });
         playPauseBtn.innerText = "PAUSE";
         updateUI();
     }
