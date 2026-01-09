@@ -3,20 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
+    <!-- Primary Meta Tags -->
     <title>music player</title>
-    <meta name="description" content="high performance music player with lyrics, zip compatibility and equalizer">
-    
-    <meta property="og:title" content="music player">
-    <meta property="og:description" content="high performance music player with lyrics, zip compatibility and equalizer">
-    <meta property="og:image" content="http://son0ra.github.io/smp.png">
-    <meta property="og:type" content="website">
-    <meta name="theme-color" content="#00ff41">
+    <meta name="title" content="music player">
+    <meta name="description" content="music player with lyrics and stuff">
 
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="music player">
-    <meta name="twitter:description" content="high performance music player with lyrics, zip compatibility and equalizer">
-    <meta name="twitter:image" content="http://son0ra.github.io/smp.png">
+    <!-- Open Graph / Discord / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="music player">
+    <meta property="og:description" content="music player with lyrics and stuff">
+    <meta property="og:site_name" content="music player">
+    <meta property="og:image" content="https://son0ra.github.io/smp.png">
+    
+    <!-- Discord Accent Color -->
+    <meta name="theme-color" content="#00ff41">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="music player">
+    <meta property="twitter:description" content="music player with lyrics and stuff">
+    <meta property="twitter:image" content="https://son0ra.github.io/smp.png">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -82,42 +91,6 @@
             align-items: center;
         }
 
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: var(--black);
-            min-width: 180px;
-            border: 1px solid var(--accent);
-            z-index: 1000;
-            top: 100%;
-            left: 0;
-        }
-
-        .dropdown:hover .dropdown-content {
-            display: block;
-        }
-
-        .dropdown-item {
-            width: 100%;
-            text-align: left;
-            padding: 10px;
-            border: none;
-            border-bottom: 1px solid var(--dark-gray);
-            background: none;
-            color: var(--accent);
-            cursor: pointer;
-            font-family: monospace;
-            text-transform: uppercase;
-        }
-
-        .dropdown-item:last-child { border-bottom: none; }
-        .dropdown-item:hover { background: var(--gray); }
-
         button {
             background: none;
             border: 1px solid var(--accent);
@@ -162,29 +135,6 @@
             overflow-x: hidden;
         }
 
-        #lyrics-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            font-size: 1.5rem;
-            line-height: 1.6;
-            text-align: center;
-            text-transform: none;
-            padding-bottom: 50px;
-        }
-
-        .lyric-line { 
-            margin: 15px 0; 
-            opacity: 0.4; 
-            transition: opacity 0.3s; 
-            cursor: pointer;
-        }
-        
-        .lyric-line.highlight { 
-            opacity: 1; 
-            text-decoration: underline; 
-            text-underline-offset: 8px;
-        }
-
         .close-btn { align-self: flex-end; font-size: 1.5rem; background: none; border: none; color: var(--accent); cursor: pointer; }
 
         .modal {
@@ -197,10 +147,6 @@
             text-align: center;
         }
 
-        input[type="text"], input[type="range"] {
-            accent-color: var(--accent);
-        }
-
         input[type="text"] {
             width: 100%;
             padding: 10px;
@@ -209,7 +155,26 @@
             border: 1px solid var(--accent);
             color: var(--accent);
             font-family: monospace;
+            text-transform: uppercase;
         }
+
+        .creator-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .file-status {
+            font-size: 0.7rem;
+            margin-top: 5px;
+            color: #555;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .file-status.loaded { color: var(--accent); }
 
         .maker-table-container {
             width: 100%;
@@ -231,38 +196,41 @@
             padding: 20px;
             gap: 10px;
         }
+
         .eq-slider {
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 150px;
         }
+
         .eq-slider input {
             writing-mode: bt-lr;
             appearance: slider-vertical;
-            width: 20px;
-            height: 100px;
+            width: 25px;
+            height: 120px;
         }
-        .eq-label { font-size: 0.6rem; margin-top: 10px; }
 
-        .help-section {
-            text-align: left;
-            padding: 20px;
-            font-size: 0.8rem;
-            line-height: 1.4;
-            max-width: 600px;
-            margin: 0 auto;
+        .ap3-badge {
+            background: var(--accent);
+            color: black;
+            padding: 2px 4px;
+            font-size: 0.6rem;
+            margin-left: 5px;
+            font-weight: bold;
         }
-        .help-section h3 { border-bottom: 1px solid var(--accent); margin: 15px 0 5px 0; padding-bottom: 2px;}
 
-        .db-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            border-bottom: 1px solid #111;
-            font-size: 0.7rem;
-            align-items: center;
+        #lyrics-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 1.5rem;
+            line-height: 1.6;
+            text-align: center;
+            text-transform: none;
+            padding-bottom: 50px;
         }
+
+        .lyric-line { margin: 15px 0; opacity: 0.4; transition: opacity 0.3s; cursor: pointer; }
+        .lyric-line.highlight { opacity: 1; text-decoration: underline; text-underline-offset: 8px; }
     </style>
 </head>
 <body>
@@ -276,18 +244,10 @@
     <div class="now-playing" id="track-title">NO TRACK SELECTED</div>
     
     <div class="controls-top">
-        <div class="dropdown">
-            <button>IMPORT ▼</button>
-            <div class="dropdown-content">
-                <button class="dropdown-item" onclick="document.getElementById('audio-upload').click()">AUDIO/ZIP PACKAGE</button>
-                <button class="dropdown-item" onclick="toggleOverlay('link-overlay')">WEB LINK</button>
-            </div>
-        </div>
-
-        <button onclick="toggleOverlay('db-overlay')">SAVED LRCS</button>
+        <button onclick="document.getElementById('audio-upload').click()">IMPORT FILE/ZIP</button>
         <button onclick="toggleOverlay('maker-overlay')">PLAYLIST MANAGER</button>
-        <button onclick="toggleOverlay('eq-overlay')">EQ</button>
-        <button onclick="toggleOverlay('help-overlay')">HELP</button>
+        <button onclick="toggleOverlay('ap3-creator-overlay')">AP3 CREATOR</button>
+        <button onclick="toggleOverlay('eq-overlay')">EQ / MIX</button>
         <button id="lyrics-btn" disabled>LYRICS</button>
         <button onclick="resetApp()" style="color: #ff3b3b; border-color: #600;">RESET</button>
     </div>
@@ -304,40 +264,99 @@
     <div id="save-status" style="font-size: 0.7rem; height: 1.2rem;"></div>
 </header>
 
-<input type="file" id="audio-upload" multiple accept="audio/*,.zip" style="display:none">
-<input type="file" id="db-lrc-upload" multiple accept=".lrc" style="display:none">
+<input type="file" id="audio-upload" multiple accept="audio/*,.zip,.ap3" style="display:none">
 
 <ul id="playlist"></ul>
 
-<div id="help-overlay" class="full-overlay" style="overflow-y: auto;">
-    <button class="close-btn" onclick="toggleOverlay('help-overlay')">[X]</button>
-    <div class="help-section">
-        <h2>HELP & INSTRUCTIONS</h2>
-        <h3>GENERAL USE</h3>
-        <p>IMPORT SONGS VIA THE "IMPORT" BUTTON. YOU CAN UPLOAD SINGLE AUDIO FILES OR A FORMATTED ZIP PLAYLIST.</p>
+<!-- AP3 CREATOR OVERLAY -->
+<div id="ap3-creator-overlay" class="full-overlay" style="justify-content: center;">
+    <button class="close-btn" onclick="toggleOverlay('ap3-creator-overlay')">[X]</button>
+    <div class="modal">
+        <h2 style="color: var(--accent)">AP3 CREATOR</h2>
+        <p style="font-size: 0.7rem; margin-top: 5px; opacity: 0.7;">COMBINE STEMS INTO A SINGLE PACKAGE</p>
         
-        <h3>PLAYLIST MANAGER</h3>
-        <p>GO TO "PLAYLIST MANAGER" TO PACKAGE YOUR OWN SONGS INTO ZIP FILES. SELECT AUDIO FILES AND OPTIONAL LRC FILES. THE MANAGER MATCHES THEM BY FILENAME AUTOMATICALLY. DOWNLOAD THE ZIP TO SHARE OR SAVE.</p>
-        
-        <h3>SAVED LRCS</h3>
-        <p>LRC FILES SAVED TO THE "SAVED LRCS" PANEL WILL AUTOMATICALLY SYNC WITH ANY SONG YOU PLAY THAT HAS THE SAME NAME, REGARDLESS OF WHERE THE SONG CAME FROM</p>
-        
-        <h3>LYRICS INTERACTION</h3>
-        <p>CLICK ON ANY LINE OF LYRICS IN THE OVERLAY TO JUMP TO THAT PART OF THE SONG. THE CURRENT LINE WILL BE UNDERLINED.</p>
+        <div class="creator-grid">
+            <div>
+                <button onclick="document.getElementById('input-vocals').click()" style="width:100%">IMPORT VOCALS</button>
+                <div id="status-vocals" class="file-status">NO FILE SELECTED</div>
+                <input type="file" id="input-vocals" accept="audio/*" style="display:none" onchange="updateCreatorStatus('vocals', this)">
+            </div>
+            <div>
+                <button onclick="document.getElementById('input-instrumental').click()" style="width:100%">IMPORT INSTRUMENTAL</button>
+                <div id="status-instrumental" class="file-status">NO FILE SELECTED</div>
+                <input type="file" id="input-instrumental" accept="audio/*" style="display:none" onchange="updateCreatorStatus('instrumental', this)">
+            </div>
+            <div>
+                <button onclick="document.getElementById('input-lrc').click()" style="width:100%">UPLOAD LRC</button>
+                <div id="status-lrc" class="file-status">NO FILE SELECTED</div>
+                <input type="file" id="input-lrc" accept=".lrc" style="display:none" onchange="updateCreatorStatus('lrc', this)">
+            </div>
+        </div>
 
-        <h3>EQUALIZER</h3>
-        <p>ADJUST FREQUENCY GAINS IN THE "EQ" PANEL TO CHANGE HOW YOUR MUSIC SOUNDS</p>
-    
-         <h3>MANUAL ZIP FORMATTING</h3>
-        <p>MAKE A FOLDER WITH TWO OTHER FOLDERS NAMED MUSIC AND LRC. ADD MUSIC TO THE MUSIC FOLDER AND LRC FILES TO THE LRC FOLDER. ZIP THE FOLDER.</p>
+        <input type="text" id="ap3-package-name" placeholder="TRACK NAME">
+        
+        <button id="build-ap3-btn" onclick="buildAP3()" style="background: var(--accent); color: #000; width: 100%; border: none; padding: 15px; font-weight: bold;">DOWNLOAD .AP3</button>
     </div>
 </div>
 
-<div id="eq-overlay" class="full-overlay" style="justify-content: center;">
+<!-- PLAYLIST MANAGER OVERLAY -->
+<div id="maker-overlay" class="full-overlay" style="overflow-y: auto;">
+    <button class="close-btn" onclick="toggleOverlay('maker-overlay')">[X]</button>
+    <h2>PLAYLIST MANAGER</h2>
+    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
+        <button onclick="document.getElementById('maker-audio-input').click()">+ ADD AUDIO</button>
+        <button onclick="document.getElementById('maker-lrc-input').click()">+ ADD LRCs</button>
+    </div>
+    <input type="file" id="maker-audio-input" multiple accept="audio/*" style="display:none">
+    <input type="file" id="maker-lrc-input" multiple accept=".lrc" style="display:none">
+
+    <div class="maker-table-container">
+        <table class="maker-table">
+            <thead>
+                <tr><th>NAME</th><th>TYPE</th><th>LRC</th><th>DEL</th></tr>
+            </thead>
+            <tbody id="maker-list"></tbody>
+        </table>
+    </div>
+    <div style="margin-top: 20px; text-align: center;">
+        <input type="text" id="maker-filename" placeholder="ZIP FILENAME" style="max-width: 300px;">
+        <br>
+        <button id="export-btn" onclick="exportZIP()" style="background: var(--accent); color: var(--black); font-weight: bold;">DOWNLOAD ZIP</button>
+    </div>
+</div>
+
+<div id="eq-overlay" class="full-overlay" style="overflow-y: auto;">
+    <button class="close-btn" onclick="toggleOverlay('eq-overlay')">[X]</button>
     <div class="modal">
-        <h3>EQUALIZER</h3>
-        <div class="eq-container" id="eq-sliders"></div>
-        <button onclick="toggleOverlay('eq-overlay')">CLOSE</button>
+        <h3>MIXER / EQ</h3>
+        <div class="eq-container">
+            <div class="eq-slider">
+                <input type="range" min="-12" max="12" step="1" value="0" oninput="updateEQBand('bass', this.value)">
+                <span class="eq-label" style="font-size:0.6rem; margin-top:5px;">BASS</span>
+            </div>
+            <div class="eq-slider">
+                <input type="range" min="-12" max="12" step="1" value="0" oninput="updateEQBand('mids', this.value)">
+                <span class="eq-label" style="font-size:0.6rem; margin-top:5px;">MIDS</span>
+            </div>
+            <div class="eq-slider">
+                <input type="range" min="-12" max="12" step="1" value="0" oninput="updateEQBand('highs', this.value)">
+                <span class="eq-label" style="font-size:0.6rem; margin-top:5px;">HIGHS</span>
+            </div>
+        </div>
+
+        <div id="ap3-mix-controls" style="display:none; border-top: 1px solid #333; margin-top: 20px; padding-top: 20px;">
+            <p style="font-size: 0.7rem; color: var(--accent); margin-bottom: 15px;">AP3 STEM MIXER</p>
+            <div class="eq-container">
+                <div class="eq-slider">
+                    <input type="range" min="0" max="1.5" step="0.05" value="1" oninput="updateStemVol('inst', this.value)">
+                    <span class="eq-label" style="font-size:0.6rem; margin-top:5px;">INST</span>
+                </div>
+                <div class="eq-slider">
+                    <input type="range" min="0" max="1.5" step="0.05" value="1" oninput="updateStemVol('vocal', this.value)">
+                    <span class="eq-label" style="font-size:0.6rem; margin-top:5px;">VOCAL</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -346,53 +365,12 @@
     <div id="lyrics-content"></div>
 </div>
 
-<div id="db-overlay" class="full-overlay">
-    <button class="close-btn" onclick="toggleOverlay('db-overlay')">[X]</button>
-    <h2>SAVED LRCS</h2>
-    <button onclick="document.getElementById('db-lrc-upload').click()">+ IMPORT LRC FILES</button>
-    <div style="text-align:left; max-width:500px; margin:20px auto; border:1px solid var(--accent); height:300px; overflow-y:auto;" id="db-list-content"></div>
-    <button onclick="clearDatabase()" style="border-color: #600; color: #ff3b3b; font-size: 0.7rem;">WIPE SAVED LRCS</button>
-</div>
-
-<div id="link-overlay" class="full-overlay" style="justify-content: center;">
-    <div class="modal">
-        <h3>IMPORT FROM LINK</h3>
-        <input type="text" id="link-input" placeholder="PASTE AUDIO URL HERE">
-        <div style="display: flex; gap: 10px; justify-content: center;">
-            <button onclick="addLink()">IMPORT</button>
-            <button onclick="toggleOverlay('link-overlay')">CANCEL</button>
-        </div>
-    </div>
-</div>
-
-<div id="maker-overlay" class="full-overlay" style="overflow-y: auto;">
-    <button class="close-btn" onclick="toggleOverlay('maker-overlay')">[X]</button>
-    <h2>PLAYLIST MANAGER</h2>
-    <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;">
-        <button onclick="document.getElementById('maker-audio-input').click()">+ AUDIO</button>
-        <button onclick="document.getElementById('maker-lrc-input').click()">+ LRCs</button>
-    </div>
-    <input type="file" id="maker-audio-input" multiple accept="audio/*" style="display:none">
-    <input type="file" id="maker-lrc-input" multiple accept=".lrc" style="display:none">
-    <div class="maker-table-container">
-        <table class="maker-table">
-            <thead>
-                <tr><th>NAME</th><th>AUDIO</th><th>LRC</th><th>DELETE</th></tr>
-            </thead>
-            <tbody id="maker-list"></tbody>
-        </table>
-    </div>
-    <div style="margin-top: 20px;">
-        <input type="text" id="maker-filename" placeholder="PLAYLIST NAME" style="max-width: 300px;">
-        <br>
-        <button onclick="exportZIP()" style="background: var(--accent); color: var(--black);">DOWNLOAD ZIP PACKAGE</button>
-    </div>
-</div>
-
-<audio id="main-audio" crossorigin="anonymous"></audio>
+<audio id="main-audio"></audio>
+<audio id="vocal-audio"></audio>
 
 <script>
     const audio = document.getElementById('main-audio');
+    const vocalAudio = document.getElementById('vocal-audio');
     const playlistEl = document.getElementById('playlist');
     const trackTitle = document.getElementById('track-title');
     const playPauseBtn = document.getElementById('play-pause-btn');
@@ -400,76 +378,92 @@
     const saveStatus = document.getElementById('save-status');
 
     let playlist = [];
-    let lrcDatabase = {}; 
     let currentIndex = -1;
+    let creatorFiles = { vocals: null, instrumental: null, lrc: null };
     let makerFiles = { audio: {}, lrc: {} };
 
-    let audioCtx, source, equalizer = [];
-    const bands = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
-
+    // Audio Context Setup
+    let audioCtx, source, vocalSource, equalizer = {};
     function initAudio() {
         if (audioCtx) return;
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         source = audioCtx.createMediaElementSource(audio);
+        vocalSource = audioCtx.createMediaElementSource(vocalAudio);
+        const mixer = audioCtx.createGain();
         
-        let lastNode = source;
-        bands.forEach((freq, i) => {
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = "peaking";
-            filter.frequency.value = freq;
-            filter.Q.value = 1;
-            filter.gain.value = 0;
-            lastNode.connect(filter);
-            lastNode = filter;
-            equalizer.push(filter);
-            
-            const sliderWrap = document.createElement('div');
-            sliderWrap.className = 'eq-slider';
-            sliderWrap.innerHTML = `
-                <input type="range" min="-20" max="20" step="1" value="0" 
-                    oninput="updateEQ(${i}, this.value)">
-                <span class="eq-label">${freq >= 1000 ? (freq/1000)+'k' : freq}</span>
-            `;
-            document.getElementById('eq-sliders').appendChild(sliderWrap);
-        });
-        lastNode.connect(audioCtx.destination);
+        equalizer.bass = audioCtx.createBiquadFilter();
+        equalizer.bass.type = "lowshelf";
+        equalizer.bass.frequency.value = 300;
+        
+        equalizer.mids = audioCtx.createBiquadFilter();
+        equalizer.mids.type = "peaking";
+        equalizer.mids.frequency.value = 1000;
+
+        equalizer.highs = audioCtx.createBiquadFilter();
+        equalizer.highs.type = "highshelf";
+        equalizer.highs.frequency.value = 3000;
+
+        source.connect(mixer);
+        vocalSource.connect(mixer);
+        mixer.connect(equalizer.bass);
+        equalizer.bass.connect(equalizer.mids);
+        equalizer.mids.connect(equalizer.highs);
+        equalizer.highs.connect(audioCtx.destination);
     }
 
-    window.updateEQ = (index, val) => {
-        if (equalizer[index]) equalizer[index].gain.value = val;
+    // --- AP3 Creator Logic ---
+    window.updateCreatorStatus = (type, input) => {
+        const file = input.files[0];
+        if (!file) return;
+        creatorFiles[type] = file;
+        const status = document.getElementById(`status-${type}`);
+        status.innerText = file.name;
+        status.classList.add('loaded');
+        
+        if (!document.getElementById('ap3-package-name').value) {
+            document.getElementById('ap3-package-name').value = file.name.replace(/\.[^/.]+$/, "").replace(/_vocals|_instrumental|_vocal|_inst/gi, "");
+        }
     };
 
-    window.onload = () => {
-        const savedDB = localStorage.getItem('player_lrc_db');
-        if (savedDB) lrcDatabase = JSON.parse(savedDB);
+    window.buildAP3 = async () => {
+        if (!creatorFiles.instrumental) return alert("INSTRUMENTAL REQUIRED");
         
-        const savedPlaylist = localStorage.getItem('player_playlist');
-        if (savedPlaylist) {
-            playlist = JSON.parse(savedPlaylist);
-            syncPlaylistWithDB();
+        const zip = new JSZip();
+        const name = document.getElementById('ap3-package-name').value || "unnamed_track";
+        
+        const music = zip.folder("music");
+        music.file(`${name}_instrumental.${creatorFiles.instrumental.name.split('.').pop()}`, creatorFiles.instrumental);
+        if (creatorFiles.vocals) {
+            music.file(`${name}_vocals.${creatorFiles.vocals.name.split('.').pop()}`, creatorFiles.vocals);
         }
         
-        updatePlaylistUI();
-        updateDBUI();
-        setInterval(updateClock, 1000);
+        if (creatorFiles.lrc) {
+            const lrcFolder = zip.folder("lrc");
+            lrcFolder.file(`${name}.lrc`, creatorFiles.lrc);
+        }
+
+        setStatus("BUILDING...");
+        const blob = await zip.generateAsync({type: "blob"});
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${name}.ap3`;
+        link.click();
+        setStatus("DONE");
     };
 
-    function updateClock() {
-        const now = new Date();
-        document.getElementById('current-time').innerText = now.toLocaleTimeString();
-        document.getElementById('current-date').innerText = now.toLocaleDateString();
-    }
-
+    // --- Playlist Manager Logic ---
     document.getElementById('maker-audio-input').onchange = (e) => {
         Array.from(e.target.files).forEach(file => {
-            makerFiles.audio[file.name.replace(/\.[^/.]+$/, "")] = file;
+            const key = file.name.replace(/\.[^/.]+$/, "");
+            makerFiles.audio[key] = file;
         });
         updateMakerUI();
     };
 
     document.getElementById('maker-lrc-input').onchange = (e) => {
         Array.from(e.target.files).forEach(file => {
-            makerFiles.lrc[file.name.replace(/\.[^/.]+$/, "")] = file;
+            const key = file.name.replace(/\.[^/.]+$/, "");
+            makerFiles.lrc[key] = file;
         });
         updateMakerUI();
     };
@@ -480,26 +474,29 @@
         list.innerHTML = Array.from(allNames).map(name => `
             <tr>
                 <td>${name}</td>
-                <td style="color:${makerFiles.audio[name] ? '#0f0' : '#f00'}">${makerFiles.audio[name] ? 'VALID' : '!'}</td>
-                <td style="color:${makerFiles.lrc[name] ? '#0f0' : '#555'}">${makerFiles.lrc[name] ? 'VALID' : '-'}</td>
-                <td><button onclick="removeFromMaker('${name}')">DELETE</button></td>
+                <td style="color:${makerFiles.audio[name] ? '#0f0' : '#f00'}">${makerFiles.audio[name] ? 'AUDIO' : 'EMPTY'}</td>
+                <td style="color:${makerFiles.lrc[name] ? '#0f0' : '#555'}">${makerFiles.lrc[name] ? 'LRC' : '-'}</td>
+                <td><button onclick="removeFromMaker('${name}')">×</button></td>
             </tr>
         `).join('');
     }
 
-    window.removeFromMaker = (name) => { delete makerFiles.audio[name]; delete makerFiles.lrc[name]; updateMakerUI(); };
+    window.removeFromMaker = (name) => {
+        delete makerFiles.audio[name];
+        delete makerFiles.lrc[name];
+        updateMakerUI();
+    };
 
     async function exportZIP() {
         const zip = new JSZip();
         const music = zip.folder("music");
-        const lrc = zip.folder("lrc");
+        const lrcFolder = zip.folder("lrc");
         const keys = Object.keys(makerFiles.audio);
-        if (keys.length === 0) return alert("SELECT AUDIO FIRST");
+        if (keys.length === 0) return alert("NO AUDIO TO EXPORT");
         
-        setStatus("PACKING...");
         keys.forEach(k => {
             music.file(makerFiles.audio[k].name, makerFiles.audio[k]);
-            if (makerFiles.lrc[k]) lrc.file(makerFiles.lrc[k].name, makerFiles.lrc[k]);
+            if (makerFiles.lrc[k]) lrcFolder.file(makerFiles.lrc[k].name, makerFiles.lrc[k]);
         });
         
         const blob = await zip.generateAsync({type:"blob"});
@@ -507,42 +504,55 @@
         link.href = URL.createObjectURL(blob);
         link.download = (document.getElementById('maker-filename').value || "playlist") + ".zip";
         link.click();
-        setStatus("DONE");
     }
 
+    // --- Player Logic ---
     document.getElementById('audio-upload').onchange = async (e) => {
         const files = Array.from(e.target.files);
         for (const file of files) {
-            if (file.name.toLowerCase().endsWith('.zip')) await processPackage(file);
+            const lowName = file.name.toLowerCase();
+            if (lowName.endsWith('.zip') || lowName.endsWith('.ap3')) await processPackage(file);
             else addTrack(file.name.replace(/\.[^/.]+$/, ""), URL.createObjectURL(file));
         }
         updatePlaylistUI();
-        saveData();
     };
 
     async function processPackage(file) {
-        setStatus("UNZIP...");
+        setStatus("UNPACKING...");
         try {
             const zip = await JSZip.loadAsync(file);
+            let instUrl, vocalUrl, lrcData, trackName = file.name.replace(/\.[^/.]+$/, "");
             const audios = [];
-            const lrcs = {};
-            const promises = [];
-            zip.forEach((path, entry) => {
-                const name = entry.name.split('/').pop().replace(/\.[^/.]+$/, "");
-                if (/\.(mp3|wav|ogg|m4a|flac)$/i.test(entry.name)) {
-                    promises.push(entry.async("blob").then(b => audios.push({name, blob:b})));
-                } else if (entry.name.endsWith('.lrc')) {
-                    promises.push(entry.async("string").then(s => lrcs[name] = parseLRC(s)));
+            
+            const entries = Object.values(zip.files);
+            for (const entry of entries) {
+                if (entry.dir) continue;
+                const entryName = entry.name.toLowerCase();
+                
+                if (/\.(mp3|wav|ogg|m4a|flac)$/i.test(entryName)) {
+                    const blob = await entry.async("blob");
+                    const url = URL.createObjectURL(blob);
+                    if (entryName.includes('_vocal')) vocalUrl = url;
+                    else if (entryName.includes('_instrumental')) instUrl = url;
+                    else audios.push({ name: entry.name.split('/').pop().replace(/\.[^/.]+$/, ""), url });
+                } else if (entryName.endsWith('.lrc')) {
+                    const text = await entry.async("string");
+                    lrcData = parseLRC(text);
                 }
-            });
-            await Promise.all(promises);
-            audios.forEach(a => addTrack(a.name, URL.createObjectURL(a.blob), lrcs[a.name]));
+            }
+
+            if (instUrl) {
+                addTrack(trackName, instUrl, lrcData, true, vocalUrl);
+            } else {
+                audios.forEach(a => addTrack(a.name, a.url, lrcData));
+            }
             setStatus("READY");
         } catch(e) { setStatus("ERROR"); }
     }
 
-    function addTrack(name, url, lrc = null) {
-        playlist.push({ name, url, lyrics: lrc || lrcDatabase[name] || null });
+    function addTrack(name, url, lyrics = null, isAp3 = false, vocalUrl = null) {
+        playlist.push({ name, url, lyrics, isAp3, vocalUrl });
+        updatePlaylistUI();
     }
 
     function parseLRC(text) {
@@ -557,13 +567,18 @@
     }
 
     window.playTrack = (idx) => {
-        initAudio(); 
+        initAudio();
         currentIndex = idx;
         const t = playlist[idx];
         audio.src = t.url;
+        vocalAudio.src = t.vocalUrl || "";
+        
         audio.play();
+        if (t.vocalUrl) vocalAudio.play();
+        
         trackTitle.innerText = t.name;
         playPauseBtn.innerText = "PAUSE";
+        document.getElementById('ap3-mix-controls').style.display = t.isAp3 ? 'block' : 'none';
         updatePlaylistUI();
     };
 
@@ -571,7 +586,7 @@
         playlistEl.innerHTML = playlist.map((t, i) => `
             <li class="song-item ${i === currentIndex ? 'active' : ''}">
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${t.name} ${t.lyrics ? '<span class="tag">LRC</span>' : ''}
+                    ${t.name} ${t.lyrics ? '<span class="tag">LRC</span>' : ''} ${t.isAp3 ? '<span class="ap3-badge">AP3</span>' : ''}
                 </div>
                 <button onclick="playTrack(${i})">PLAY</button>
                 <button onclick="removeTrack(${i})">×</button>
@@ -582,24 +597,25 @@
 
     window.removeTrack = (i) => {
         playlist.splice(i, 1);
-        if (currentIndex === i) { audio.src = ""; currentIndex = -1; trackTitle.innerText = "NO TRACK"; }
-        else if (currentIndex > i) currentIndex--;
+        if (currentIndex === i) { audio.src = ""; vocalAudio.src = ""; currentIndex = -1; trackTitle.innerText = "NO TRACK"; }
         updatePlaylistUI();
-        saveData();
     };
+
+    window.updateEQBand = (band, val) => { if(equalizer[band]) equalizer[band].gain.value = val; };
+    window.updateStemVol = (type, val) => { if(type === 'inst') audio.volume = val; else vocalAudio.volume = val; };
 
     playPauseBtn.onclick = () => {
-        initAudio();
-        if (audio.paused) { audio.play(); playPauseBtn.innerText = "PAUSE"; }
-        else { audio.pause(); playPauseBtn.innerText = "PLAY"; }
+        if (audio.paused) { audio.play(); if(vocalAudio.src) vocalAudio.play(); playPauseBtn.innerText = "PAUSE"; }
+        else { audio.pause(); vocalAudio.pause(); playPauseBtn.innerText = "PLAY"; }
     };
-
-    document.getElementById('next-btn').onclick = () => playlist.length && playTrack((currentIndex + 1) % playlist.length);
-    document.getElementById('prev-btn').onclick = () => playlist.length && playTrack((currentIndex - 1 + playlist.length) % playlist.length);
 
     audio.ontimeupdate = () => {
         progressBar.max = audio.duration || 0;
         progressBar.value = audio.currentTime;
+        if (vocalAudio.src && Math.abs(vocalAudio.currentTime - audio.currentTime) > 0.1) {
+            vocalAudio.currentTime = audio.currentTime;
+        }
+        
         if (document.getElementById('lyrics-overlay').style.display === 'flex') {
             const lrc = playlist[currentIndex]?.lyrics;
             if (lrc) {
@@ -607,114 +623,39 @@
                 lrc.forEach((l, i) => { if (audio.currentTime >= l.time) active = i; });
                 document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('highlight'));
                 const line = document.getElementById(`line-${active}`);
-                if (line) { 
-                    line.classList.add('highlight'); 
-                    line.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-                }
+                if (line) { line.classList.add('highlight'); line.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
             }
         }
     };
 
-    progressBar.oninput = () => audio.currentTime = progressBar.value;
+    progressBar.oninput = () => {
+        audio.currentTime = progressBar.value;
+        if(vocalAudio.src) vocalAudio.currentTime = progressBar.value;
+    };
 
     document.getElementById('lyrics-btn').onclick = () => {
         const lrc = playlist[currentIndex]?.lyrics;
         if (!lrc) return;
         document.getElementById('lyrics-content').innerHTML = lrc.map((l, i) => `
-            <div class="lyric-line" id="line-${i}" onclick="seekTo(${l.time})">${l.text}</div>
+            <div class="lyric-line" id="line-${i}" onclick="audio.currentTime=${l.time}">${l.text}</div>
         `).join('');
         toggleOverlay('lyrics-overlay');
     };
 
-    window.seekTo = (time) => {
-        audio.currentTime = time;
-    };
-
     window.toggleOverlay = (id) => {
         const el = document.getElementById(id);
-        el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+        el.style.display = (el.style.display === 'flex' || el.style.display === 'block') ? 'none' : (id === 'eq-overlay' || id === 'maker-overlay' ? 'block' : 'flex');
     };
 
     function setStatus(m) { saveStatus.innerText = m; setTimeout(() => saveStatus.innerText = "", 2000); }
-    
-    function saveData() {
-        localStorage.setItem('player_playlist', JSON.stringify(playlist.map(t => ({name: t.name, lyrics: t.lyrics}))));
-        localStorage.setItem('player_lrc_db', JSON.stringify(lrcDatabase));
-        setStatus("SAVED");
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('current-time').innerText = now.toLocaleTimeString();
+        document.getElementById('current-date').innerText = now.toLocaleDateString();
     }
-
-    document.getElementById('db-lrc-upload').onchange = (e) => {
-        const files = Array.from(e.target.files);
-        let count = 0;
-        files.forEach(file => {
-            const reader = new FileReader();
-            const name = file.name.replace(/\.[^/.]+$/, "");
-            reader.onload = (event) => {
-                lrcDatabase[name] = parseLRC(event.target.result);
-                count++;
-                if (count === files.length) {
-                    saveData();
-                    updateDBUI();
-                    syncPlaylistWithDB();
-                }
-            };
-            reader.readAsText(file);
-        });
-    };
-
-    function updateDBUI() {
-        const container = document.getElementById('db-list-content');
-        const keys = Object.keys(lrcDatabase);
-        if (keys.length === 0) {
-            container.innerHTML = "<div style='text-align:center; padding-top:20px;'>NO SAVED LRCS</div>";
-            return;
-        }
-        container.innerHTML = keys.map(k => `
-            <div class="db-item">
-                <span>${k}</span>
-                <button onclick="deleteFromDB('${k}')" style="font-size:0.6rem; padding: 2px 5px;">DEL</button>
-            </div>
-        `).join('');
-    }
-
-    window.deleteFromDB = (name) => {
-        delete lrcDatabase[name];
-        saveData();
-        updateDBUI();
-    };
-
-    window.clearDatabase = () => {
-        if (confirm("CLEAR ALL SAVED LYRICS?")) {
-            lrcDatabase = {};
-            saveData();
-            updateDBUI();
-        }
-    };
-
-    function syncPlaylistWithDB() {
-        let found = false;
-        playlist.forEach(track => {
-            if (!track.lyrics && lrcDatabase[track.name]) {
-                track.lyrics = lrcDatabase[track.name];
-                found = true;
-            }
-        });
-        if (found) updatePlaylistUI();
-    }
-
-    window.addLink = () => {
-        const url = document.getElementById('link-input').value.trim();
-        if (!url) return;
-        const name = url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/, "") || "LINKED TRACK";
-        addTrack(name, url);
-        document.getElementById('link-input').value = "";
-        toggleOverlay('link-overlay');
-        updatePlaylistUI();
-        saveData();
-    };
-
-    window.resetApp = () => { if(confirm("WIPE ALL DATA?")) { localStorage.clear(); location.reload(); }};
-    audio.onended = () => document.getElementById('next-btn').click();
+    setInterval(updateClock, 1000);
+    window.resetApp = () => { if(confirm("WIPE EVERYTHING?")) location.reload(); };
+    audio.onended = () => playlist.length && playTrack((currentIndex + 1) % playlist.length);
 </script>
 </body>
 </html>
