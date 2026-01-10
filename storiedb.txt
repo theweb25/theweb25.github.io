@@ -1,9 +1,15 @@
 //video = direct video link, videoe= external video link, text = text based story. < READ THISSSSSSSSSSSS!!!!!!!!!!!!!!!
 title:welcome (read this!!)
-text:welcome to storiedb!! suggest stories by dming mx5ve on tiktok. to add storiedb to your home screen, (iphone only), go to safari > open storiedb > press the share button > more > add to home screen
+text:welcome to storiedb!! suggest stories by dming mx5ve on tiktok. to add storiedb to your home screen, (iphone only), go to safari > open storiedb > press the share button > more > add to home scree
+-
+title:honorable mention to people who provide full stories!!
+text:you people are the best people to EVER touch tiktok
 -
 title:whats a little white lie you've told your partner to keep them happy?
 video:https://ucbeb86aad4e7edfb5234ee216f2.dl.dropboxusercontent.com/cd/0/inline/C4oAGLeewVgT_n21pTJx73riyat2Lg9yYx8ggv5Z6bUb38HwMdeI03EC_W3Iq0O2vmJXRLXdeejP17eaf1dLH2g2EGZhV88E0RYpwfRcHCWbTzne1iocE_SjaLIZWbYX030tIisvXGrzzGzOnO48wNyA/file
+-
+title:i got hearing aids to find out what my "cool friends" really thought of me
+video:https://www.dropbox.com/scl/fi/we2ikf8k4fl8qzyy58jbq/igothearingaids.mp4?rlkey=09q9flq3711jqsw7kozgn255g&st=m2w10n72&raw=1
 -
 
 
