@@ -26,17 +26,18 @@
             backdrop-filter: blur(10px);
             border-bottom: 1px solid #222;
         }
-        .video-container {
+        .media-container {
             width: 100%;
-            height: calc(100vh - 80px);
+            height: calc(100vh - 120px);
             background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
-        .video-container video {
-            width: 100%;
-            height: 100%;
+        .media-container video, .media-container img {
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
         }
         ::-webkit-scrollbar {
@@ -49,13 +50,23 @@
             background: #333;
             border-radius: 10px;
         }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
-<body class="min-h-screen pb-20">
+<body class="min-h-screen">
 
     <!-- Header / Navigation -->
     <nav class="glass-nav sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
-        <h1 id="app-title" class="text-xl font-800 tracking-tighter text-red-500 cursor-pointer select-none">STORIEDB</h1>
+        <div class="flex items-baseline gap-2">
+            <h1 id="app-title" class="text-xl font-800 tracking-tighter text-red-500 cursor-pointer select-none">STORIEDB</h1>
+            <span id="visit-count" class="text-[10px] font-mono text-gray-700 select-none">...</span>
+        </div>
         <button id="random-btn" class="bg-white text-black px-4 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-200">
             Random
         </button>
@@ -70,25 +81,28 @@
     </div>
 
     <!-- Database Stats -->
-    <div id="stats-container" class="px-4 py-3 flex gap-2 overflow-x-auto whitespace-nowrap">
-        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+    <div id="stats-container" class="px-4 py-4 flex gap-4 overflow-x-auto no-scrollbar whitespace-nowrap border-b border-[#111]">
+        <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-red-600"></span>
-            <span class="text-xs font-semibold text-gray-400">Videos: <span id="count-video" class="text-white">0</span></span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Videos: <span id="count-video" class="text-white">0</span></span>
         </div>
-        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-green-600"></span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Images: <span id="count-image" class="text-white">0</span></span>
+        </div>
+        <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-yellow-600"></span>
-            <span class="text-xs font-semibold text-gray-400">External: <span id="count-external" class="text-white">0</span></span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Ext: <span id="count-external" class="text-white">0</span></span>
         </div>
-        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+        <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-blue-600"></span>
-            <span class="text-xs font-semibold text-gray-400">Texts: <span id="count-text" class="text-white">0</span></span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Texts: <span id="count-text" class="text-white">0</span></span>
         </div>
     </div>
 
     <!-- Main Content Area -->
-    <main id="story-container" class="px-4 space-y-4">
+    <main id="story-container" class="px-4 space-y-4 pt-4 pb-12">
         <div class="animate-pulse space-y-4">
-            <div class="h-32 bg-[#111] rounded-xl"></div>
             <div class="h-32 bg-[#111] rounded-xl"></div>
             <div class="h-32 bg-[#111] rounded-xl"></div>
         </div>
@@ -98,7 +112,7 @@
     <div id="story-modal" class="fixed inset-0 z-[60] bg-black hidden overflow-y-auto">
         <div class="flex flex-col min-h-screen">
             <div class="p-4 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-md z-10">
-                <button id="close-modal" class="text-white text-lg font-bold p-2 bg-white/10 rounded-lg">✕ Close</button>
+                <button id="close-modal" class="text-white text-sm font-bold px-4 py-2 bg-white/10 rounded-lg">✕ Close</button>
             </div>
             <div id="modal-content" class="flex-grow flex flex-col">
                 <!-- Content injected here -->
@@ -109,7 +123,7 @@
     <!-- Hidden Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-6 hidden">
         <div class="bg-[#111] border border-[#222] w-full max-sm rounded-2xl p-6 shadow-2xl">
-            <h2 class="text-xl font-bold mb-4">Database Settings</h2>
+            <h2 class="text-xl font-bold mb-4 text-red-500">Database Settings</h2>
             <p class="text-sm text-gray-400 mb-4">Enter your GitHub Raw URL:</p>
             <input type="text" id="db-url-input" placeholder="https://raw.githubusercontent.com/..." 
                 class="w-full bg-black border border-[#333] rounded-lg px-4 py-2 mb-4 text-sm focus:border-red-500 outline-none">
@@ -125,6 +139,8 @@
         let DB_URL = localStorage.getItem('story_db_url') || DEFAULT_DB;
         
         let stories = [];
+        let currentRawVisitCount = "...";
+
         const container = document.getElementById('story-container');
         const searchInput = document.getElementById('search-input');
         const randomBtn = document.getElementById('random-btn');
@@ -137,10 +153,11 @@
         const saveSettings = document.getElementById('save-settings');
         const cancelSettings = document.getElementById('cancel-settings');
 
-        // Stats Elements
         const countVideo = document.getElementById('count-video');
+        const countImage = document.getElementById('count-image');
         const countExternal = document.getElementById('count-external');
         const countText = document.getElementById('count-text');
+        const visitCount = document.getElementById('visit-count');
 
         let clickCount = 0;
         let clickTimer;
@@ -163,9 +180,18 @@
             fetchStories(); 
         };
 
-        cancelSettings.onclick = () => {
-            settingsModal.classList.add('hidden');
-        };
+        cancelSettings.onclick = () => settingsModal.classList.add('hidden');
+
+        async function trackVisits() {
+            try {
+                const response = await fetch('https://api.countapi.xyz/hit/storiedb-visits/hits');
+                const data = await response.json();
+                currentRawVisitCount = data.value.toLocaleString();
+                visitCount.textContent = `[${currentRawVisitCount}]`;
+            } catch (err) {
+                visitCount.textContent = ''; 
+            }
+        }
 
         function parseDatabase(text) {
             if (!text || !text.trim()) return [];
@@ -175,16 +201,18 @@
                 const story = {};
                 lines.forEach(line => {
                     const l = line.trim();
-                    if (l.toLowerCase().startsWith('title:')) story.title = l.substring(6).trim();
-                    if (l.toLowerCase().startsWith('text:')) story.text = l.substring(5).trim();
-                    if (l.toLowerCase().startsWith('video:')) {
+                    const lowerL = l.toLowerCase();
+                    if (lowerL.startsWith('title:')) story.title = l.substring(6).trim();
+                    if (lowerL.startsWith('text:')) story.text = l.substring(5).trim();
+                    if (lowerL.startsWith('video:')) {
                         story.video = l.substring(6).trim();
                         story.isExternal = false;
                     }
-                    if (l.toLowerCase().startsWith('videoe:')) {
+                    if (lowerL.startsWith('videoe:')) {
                         story.video = l.substring(7).trim();
                         story.isExternal = true;
                     }
+                    if (lowerL.startsWith('image:')) story.image = l.substring(6).trim();
                 });
                 return story;
             }).filter(s => s.title && s.title.toLowerCase() !== 'placeholder' && !s.title.startsWith('//'));
@@ -192,19 +220,9 @@
 
         async function fetchStories() {
             try {
-                let targetUrl = DB_URL;
-                if (targetUrl.startsWith('http://')) {
-                    targetUrl = targetUrl.replace('http://', 'https://');
-                }
-
-                const response = await fetch(targetUrl, {
-                    method: 'GET',
-                    headers: { 'Accept': 'text/plain' }
-                });
-
+                const response = await fetch(DB_URL);
                 if (!response.ok) throw new Error('Network error');
                 const dataText = await response.text();
-                
                 stories = parseDatabase(dataText);
                 updateStats(stories);
                 renderStories(stories);
@@ -215,23 +233,31 @@
         }
 
         function updateStats(items) {
-            let v = 0, e = 0, t = 0;
+            let v = 0, e = 0, t = 0, i = 0;
             items.forEach(s => {
-                if (s.video && s.video !== '(link goes here)') {
+                if (s.video) {
                     if (s.isExternal) e++; else v++;
+                } else if (s.image) {
+                    i++;
                 } else {
                     t++;
                 }
             });
             countVideo.textContent = v;
+            countImage.textContent = i;
             countExternal.textContent = e;
             countText.textContent = t;
+        }
+
+        function injectDynamicData(text) {
+            if (!text) return "";
+            return text.replace(/\(visitors\)/gi, currentRawVisitCount);
         }
 
         function renderStories(items) {
             container.innerHTML = '';
             if (items.length === 0) {
-                container.innerHTML = `<div class="py-20 text-gray-500 text-center"><p>(no info)</p></div>`;
+                container.innerHTML = `<div class="py-20 text-gray-500 text-center"><p>No stories found.</p></div>`;
                 return;
             }
 
@@ -241,23 +267,25 @@
                 card.onclick = () => openStory(story);
                 
                 let typeLabel = '';
-                const hasVideo = story.video && story.video !== '(link goes here)';
-
-                if (hasVideo) {
+                if (story.video) {
                     typeLabel = !story.isExternal ? 
                         `<span class="text-[10px] bg-red-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white">Video</span>` :
-                        `<span class="text-[10px] bg-yellow-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-black">External Link</span>`;
+                        `<span class="text-[10px] bg-yellow-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-black">External</span>`;
+                } else if (story.image) {
+                    typeLabel = `<span class="text-[10px] bg-green-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white">Image</span>`;
                 } else {
                     typeLabel = `<span class="text-[10px] bg-blue-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white">Text</span>`;
                 }
 
+                // Inject visitor count into both title and preview text
+                const injectedTitle = injectDynamicData(story.title);
+                const previewText = injectDynamicData(story.text || 'View story content...');
+
                 card.innerHTML = `
                     <div class="flex flex-col gap-2">
                         ${typeLabel}
-                        <h2 class="text-lg font-semibold leading-tight">${story.title}</h2>
-                        <p class="text-gray-400 text-sm line-clamp-2">
-                            ${story.text || (story.isExternal ? 'External story link available...' : 'Watch video for the full story...')}
-                        </p>
+                        <h2 class="text-lg font-semibold leading-tight">${injectedTitle}</h2>
+                        <p class="text-gray-400 text-sm line-clamp-2">${previewText}</p>
                     </div>
                 `;
                 container.appendChild(card);
@@ -265,50 +293,57 @@
         }
 
         function openStory(story) {
-            const videoUrl = story.video ? story.video.trim() : '';
-            const hasVideo = videoUrl && videoUrl !== '(link goes here)';
-
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
-            if (hasVideo && story.isExternal) {
+            const injectedTitle = injectDynamicData(story.title);
+
+            if (story.video && story.isExternal) {
                 modalContent.innerHTML = `
                     <div class="flex-grow flex flex-col items-center justify-center text-center p-6">
-                        <h1 class="text-2xl font-bold mb-4">${story.title}</h1>
+                        <h1 class="text-2xl font-bold mb-4">${injectedTitle}</h1>
                         <div class="bg-[#111] p-6 rounded-2xl border border-yellow-600/50 mb-6">
-                            <p class="text-yellow-500 font-semibold mb-2 text-lg">Redirecting...</p>
-                            <p class="text-gray-400">The story will not show on the page so instead you will be redirected.</p>
+                            <p class="text-yellow-500 font-semibold mb-2">External Content</p>
+                            <p class="text-gray-400">Redirecting to official link...</p>
                         </div>
-                        <p class="text-xs text-gray-600 mb-8 break-all max-w-xs">${videoUrl}</p>
-                        <a href="${videoUrl}" target="_blank" class="bg-white text-black px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">Go to Story</a>
+                        <a href="${story.video}" target="_blank" class="bg-white text-black px-8 py-3 rounded-full font-bold">Go to Story</a>
                     </div>
                 `;
-                setTimeout(() => { window.open(videoUrl, '_blank'); }, 2000);
+                setTimeout(() => { window.open(story.video, '_blank'); }, 1500);
                 return;
             }
 
             let mediaHtml = '';
-            if (hasVideo && !story.isExternal) {
-                mediaHtml = `
-                    <div class="video-container flex-grow">
-                        <video controls autoplay playsinline loop class="shadow-2xl">
-                            <source src="${videoUrl}" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                `;
+            if (story.video && !story.isExternal) {
+                mediaHtml = `<div class="media-container flex-grow"><video controls autoplay playsinline loop><source src="${story.video}" type="video/mp4"></video></div>`;
+            } else if (story.image) {
+                mediaHtml = `<div class="media-container flex-grow"><img src="${story.image}" alt="story image"></div>`;
             }
 
-            const cleanText = (story.text || '').trim();
+            const cleanText = injectDynamicData((story.text || '').trim());
+            const isMediaEntry = !!(story.video || story.image);
+
             modalContent.innerHTML = `
                 ${mediaHtml}
                 <div class="p-6 bg-gradient-to-t from-black via-black to-transparent">
-                    <h1 class="text-2xl font-bold mb-4">${story.title}</h1>
-                    ${cleanText ? `<div class="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap pb-10">${cleanText}</div>` : ''}
-                    ${(!cleanText && !hasVideo) ? '<p class="text-gray-500 italic">No content available.</p>' : ''}
+                    <h1 class="text-2xl font-bold mb-2">${injectedTitle}</h1>
+                    ${cleanText ? `
+                        ${isMediaEntry ? '<p class="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">Description</p>' : ''}
+                        <div class="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap pb-10">${cleanText}</div>
+                    ` : ''}
                 </div>
             `;
         }
+
+        function filterItems() {
+            const term = searchInput.value.toLowerCase();
+            const filtered = stories.filter(s => {
+                return s.title.toLowerCase().includes(term) || (s.text && s.text.toLowerCase().includes(term));
+            });
+            renderStories(filtered);
+        }
+
+        searchInput.oninput = filterItems;
 
         closeModal.onclick = () => {
             modal.classList.add('hidden');
@@ -316,22 +351,15 @@
             modalContent.innerHTML = ''; 
         };
 
-        searchInput.oninput = (e) => {
-            const term = e.target.value.toLowerCase();
-            const filtered = stories.filter(s => 
-                s.title.toLowerCase().includes(term) || 
-                (s.text && s.text.toLowerCase().includes(term))
-            );
-            renderStories(filtered);
-        };
-
         randomBtn.onclick = () => {
             if (stories.length === 0) return;
-            const randomStory = stories[Math.floor(Math.random() * stories.length)];
-            openStory(randomStory);
+            openStory(stories[Math.floor(Math.random() * stories.length)]);
         };
 
-        window.onload = fetchStories;
+        window.onload = async () => {
+            await trackVisits();
+            fetchStories();
+        };
     </script>
 </body>
 </html>
