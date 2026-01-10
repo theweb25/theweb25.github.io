@@ -22,5 +22,8 @@ video:https://www.dropbox.com/scl/fi/ycruigovxrp4swp768ltl/myyard.mp4?rlkey=eib7
 -
 title:what did a flight attendant do that made you go "you got to be kidding me"
 video:https://www.dropbox.com/scl/fi/i8n8qexvzmahqreyiwz26/whatdid.mp4?rlkey=i4fgpzmnzu4tp7lfbd7cv5zze&st=xrci87gi&raw=1
+-
+title:why did my teacher freeze when she realized what she took from me?
+video:https://www.dropbox.com/scl/fi/sceyj56h9htg86yza8c55/teacherhearingaid.mp4?rlkey=mgtfaykrqs23npf4dp8um683x&st=u4d2jc92&dl=0
 
 
