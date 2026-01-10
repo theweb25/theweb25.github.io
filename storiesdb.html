@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Story Finisher</title>
+    <title>STORIEDB</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -26,9 +26,19 @@
             backdrop-filter: blur(10px);
             border-bottom: 1px solid #222;
         }
+        /* Video takes full available screen height/width now */
         .video-container {
-            aspect-ratio: 9/16;
+            width: 100%;
+            height: calc(100vh - 80px); /* Adjust for header/padding */
             background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Keeps aspect ratio while fitting screen */
         }
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
@@ -47,7 +57,7 @@
 
     <!-- Header / Navigation -->
     <nav class="glass-nav sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
-        <h1 id="app-title" class="text-xl font-800 tracking-tighter text-red-500 cursor-pointer select-none">STORYDB</h1>
+        <h1 id="app-title" class="text-xl font-800 tracking-tighter text-red-500 cursor-pointer select-none">STORIEDB</h1>
         <button id="random-btn" class="bg-white text-black px-4 py-1.5 rounded-full text-sm font-semibold hover:bg-gray-200">
             Random
         </button>
@@ -63,7 +73,6 @@
 
     <!-- Main Content Area -->
     <main id="story-container" class="px-4 space-y-4">
-        <!-- Skeleton Loading -->
         <div class="animate-pulse space-y-4">
             <div class="h-32 bg-[#111] rounded-xl"></div>
             <div class="h-32 bg-[#111] rounded-xl"></div>
@@ -74,10 +83,10 @@
     <!-- Fullscreen Story Modal -->
     <div id="story-modal" class="fixed inset-0 z-[60] bg-black hidden overflow-y-auto">
         <div class="flex flex-col min-h-screen">
-            <div class="p-4 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-md z-10">
-                <button id="close-modal" class="text-white text-lg p-2">✕ Close</button>
+            <div class="p-4 flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-md z-10">
+                <button id="close-modal" class="text-white text-lg font-bold p-2 bg-white/10 rounded-lg">✕ Close</button>
             </div>
-            <div id="modal-content" class="p-6">
+            <div id="modal-content" class="flex-grow flex flex-col">
                 <!-- Content injected here -->
             </div>
         </div>
@@ -85,7 +94,7 @@
 
     <!-- Hidden Settings Modal -->
     <div id="settings-modal" class="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-6 hidden">
-        <div class="bg-[#111] border border-[#222] w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+        <div class="bg-[#111] border border-[#222] w-full max-sm rounded-2xl p-6 shadow-2xl">
             <h2 class="text-xl font-bold mb-4">Database Settings</h2>
             <p class="text-sm text-gray-400 mb-4">Enter your GitHub Raw URL:</p>
             <input type="text" id="db-url-input" placeholder="https://raw.githubusercontent.com/..." 
@@ -149,7 +158,15 @@
                     const l = line.trim();
                     if (l.toLowerCase().startsWith('title:')) story.title = l.substring(6).trim();
                     if (l.toLowerCase().startsWith('text:')) story.text = l.substring(5).trim();
-                    if (l.toLowerCase().startsWith('video:')) story.video = l.substring(6).trim();
+                    
+                    if (l.toLowerCase().startsWith('video:')) {
+                        story.video = l.substring(6).trim();
+                        story.isExternal = false;
+                    }
+                    if (l.toLowerCase().startsWith('videoe:')) {
+                        story.video = l.substring(7).trim();
+                        story.isExternal = true;
+                    }
                 });
                 return story;
             }).filter(s => s.title && s.title.toLowerCase() !== 'placeholder' && !s.title.startsWith('//'));
@@ -178,13 +195,6 @@
             }
         }
 
-        function isDirectVideo(url) {
-            if (!url) return false;
-            const videoExtensions = ['.mp4', '.mov', '.webm', '.ogg', '.m4v'];
-            const urlPath = url.split('?')[0].toLowerCase();
-            return videoExtensions.some(ext => urlPath.endsWith(ext));
-        }
-
         function renderStories(items) {
             container.innerHTML = '';
             
@@ -203,13 +213,14 @@
                 card.onclick = () => openStory(story);
                 
                 let typeLabel = '';
-                if (story.video) {
-                    const direct = isDirectVideo(story.video);
-                    typeLabel = direct ? 
-                        `<span class="text-[10px] bg-red-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Video</span>` :
+                const hasVideo = story.video && story.video !== '(link goes here)';
+
+                if (hasVideo) {
+                    typeLabel = !story.isExternal ? 
+                        `<span class="text-[10px] bg-red-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white">Video</span>` :
                         `<span class="text-[10px] bg-yellow-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-black">External Link</span>`;
                 } else {
-                    typeLabel = `<span class="text-[10px] bg-blue-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Text</span>`;
+                    typeLabel = `<span class="text-[10px] bg-blue-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest text-white">Text</span>`;
                 }
 
                 card.innerHTML = `
@@ -217,7 +228,7 @@
                         ${typeLabel}
                         <h2 class="text-lg font-semibold leading-tight">${story.title}</h2>
                         <p class="text-gray-400 text-sm line-clamp-2">
-                            ${story.text || (isDirectVideo(story.video) ? 'Watch video for the full story...' : 'External story link available...')}
+                            ${story.text || (story.isExternal ? 'External story link available...' : 'Watch video for the full story...')}
                         </p>
                     </div>
                 `;
@@ -227,41 +238,36 @@
 
         function openStory(story) {
             const videoUrl = story.video ? story.video.trim() : '';
-            const isDirect = isDirectVideo(videoUrl);
+            const hasVideo = videoUrl && videoUrl !== '(link goes here)';
 
-            // If it's a video link but NOT direct, show redirect notice
-            if (videoUrl && !isDirect && videoUrl !== '(link goes here)') {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            if (hasVideo && story.isExternal) {
                 modalContent.innerHTML = `
-                    <div class="flex flex-col items-center text-center py-10">
+                    <div class="flex-grow flex flex-col items-center justify-center text-center p-6">
                         <h1 class="text-2xl font-bold mb-4">${story.title}</h1>
                         <div class="bg-[#111] p-6 rounded-2xl border border-yellow-600/50 mb-6">
                             <p class="text-yellow-500 font-semibold mb-2 text-lg">Redirecting...</p>
                             <p class="text-gray-400">The story will not show on the page so instead you will be redirected.</p>
                         </div>
-                        <p class="text-sm text-gray-500 mb-8">URL: ${videoUrl}</p>
+                        <p class="text-xs text-gray-600 mb-8 break-all max-w-xs">${videoUrl}</p>
                         <a href="${videoUrl}" target="_blank" class="bg-white text-black px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
                             Go to Story
                         </a>
                     </div>
                 `;
-                // Optional auto-redirect after delay
                 setTimeout(() => {
                     window.open(videoUrl, '_blank');
                 }, 2000);
                 return;
             }
 
-            // Normal flow for text or direct video
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-
             let mediaHtml = '';
-            if (videoUrl && isDirect) {
+            if (hasVideo && !story.isExternal) {
                 mediaHtml = `
-                    <div class="video-container rounded-2xl overflow-hidden mb-6">
-                        <video controls autoplay class="w-full h-full object-cover">
+                    <div class="video-container flex-grow">
+                        <video controls autoplay playsinline loop class="shadow-2xl">
                             <source src="${videoUrl}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
@@ -272,9 +278,12 @@
             const cleanText = (story.text || '').trim();
 
             modalContent.innerHTML = `
-                <h1 class="text-3xl font-bold mb-4">${story.title}</h1>
                 ${mediaHtml}
-                <div class="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">${cleanText}</div>
+                <div class="p-6 bg-gradient-to-t from-black via-black to-transparent">
+                    <h1 class="text-2xl font-bold mb-4">${story.title}</h1>
+                    ${cleanText ? `<div class="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap pb-10">${cleanText}</div>` : ''}
+                    ${(!cleanText && !hasVideo) ? '<p class="text-gray-500 italic">No content available for this story.</p>' : ''}
+                </div>
             `;
         }
 
