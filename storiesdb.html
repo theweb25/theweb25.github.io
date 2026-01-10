@@ -26,10 +26,9 @@
             backdrop-filter: blur(10px);
             border-bottom: 1px solid #222;
         }
-        /* Video takes full available screen height/width now */
         .video-container {
             width: 100%;
-            height: calc(100vh - 80px); /* Adjust for header/padding */
+            height: calc(100vh - 80px);
             background: #000;
             display: flex;
             align-items: center;
@@ -38,9 +37,8 @@
         .video-container video {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Keeps aspect ratio while fitting screen */
+            object-fit: contain;
         }
-        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -64,10 +62,26 @@
     </nav>
 
     <!-- Search Bar -->
-    <div class="px-4 py-4">
+    <div class="px-4 pt-4">
         <div class="relative">
             <input type="text" id="search-input" placeholder="Search stories..." 
                 class="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors">
+        </div>
+    </div>
+
+    <!-- Database Stats -->
+    <div id="stats-container" class="px-4 py-3 flex gap-2 overflow-x-auto whitespace-nowrap">
+        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-red-600"></span>
+            <span class="text-xs font-semibold text-gray-400">Videos: <span id="count-video" class="text-white">0</span></span>
+        </div>
+        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-yellow-600"></span>
+            <span class="text-xs font-semibold text-gray-400">External: <span id="count-external" class="text-white">0</span></span>
+        </div>
+        <div class="bg-[#111] border border-[#222] px-3 py-1.5 rounded-lg flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+            <span class="text-xs font-semibold text-gray-400">Texts: <span id="count-text" class="text-white">0</span></span>
         </div>
     </div>
 
@@ -123,6 +137,11 @@
         const saveSettings = document.getElementById('save-settings');
         const cancelSettings = document.getElementById('cancel-settings');
 
+        // Stats Elements
+        const countVideo = document.getElementById('count-video');
+        const countExternal = document.getElementById('count-external');
+        const countText = document.getElementById('count-text');
+
         let clickCount = 0;
         let clickTimer;
 
@@ -158,7 +177,6 @@
                     const l = line.trim();
                     if (l.toLowerCase().startsWith('title:')) story.title = l.substring(6).trim();
                     if (l.toLowerCase().startsWith('text:')) story.text = l.substring(5).trim();
-                    
                     if (l.toLowerCase().startsWith('video:')) {
                         story.video = l.substring(6).trim();
                         story.isExternal = false;
@@ -188,6 +206,7 @@
                 const dataText = await response.text();
                 
                 stories = parseDatabase(dataText);
+                updateStats(stories);
                 renderStories(stories);
             } catch (err) {
                 console.error("Fetch error:", err);
@@ -195,19 +214,28 @@
             }
         }
 
+        function updateStats(items) {
+            let v = 0, e = 0, t = 0;
+            items.forEach(s => {
+                if (s.video && s.video !== '(link goes here)') {
+                    if (s.isExternal) e++; else v++;
+                } else {
+                    t++;
+                }
+            });
+            countVideo.textContent = v;
+            countExternal.textContent = e;
+            countText.textContent = t;
+        }
+
         function renderStories(items) {
             container.innerHTML = '';
-            
             if (items.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-20 text-gray-500">
-                        <p class="text-lg">(no info)</p>
-                    </div>
-                `;
+                container.innerHTML = `<div class="py-20 text-gray-500 text-center"><p>(no info)</p></div>`;
                 return;
             }
 
-            items.forEach((story, index) => {
+            items.forEach((story) => {
                 const card = document.createElement('div');
                 card.className = 'story-card p-5 rounded-2xl cursor-pointer';
                 card.onclick = () => openStory(story);
@@ -252,14 +280,10 @@
                             <p class="text-gray-400">The story will not show on the page so instead you will be redirected.</p>
                         </div>
                         <p class="text-xs text-gray-600 mb-8 break-all max-w-xs">${videoUrl}</p>
-                        <a href="${videoUrl}" target="_blank" class="bg-white text-black px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">
-                            Go to Story
-                        </a>
+                        <a href="${videoUrl}" target="_blank" class="bg-white text-black px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-200 transition-colors">Go to Story</a>
                     </div>
                 `;
-                setTimeout(() => {
-                    window.open(videoUrl, '_blank');
-                }, 2000);
+                setTimeout(() => { window.open(videoUrl, '_blank'); }, 2000);
                 return;
             }
 
@@ -276,13 +300,12 @@
             }
 
             const cleanText = (story.text || '').trim();
-
             modalContent.innerHTML = `
                 ${mediaHtml}
                 <div class="p-6 bg-gradient-to-t from-black via-black to-transparent">
                     <h1 class="text-2xl font-bold mb-4">${story.title}</h1>
                     ${cleanText ? `<div class="text-gray-300 text-lg leading-relaxed whitespace-pre-wrap pb-10">${cleanText}</div>` : ''}
-                    ${(!cleanText && !hasVideo) ? '<p class="text-gray-500 italic">No content available for this story.</p>' : ''}
+                    ${(!cleanText && !hasVideo) ? '<p class="text-gray-500 italic">No content available.</p>' : ''}
                 </div>
             `;
         }
