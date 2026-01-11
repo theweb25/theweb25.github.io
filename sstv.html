@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SSTV Robot32 Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .scanline {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 0, 0, 0.7);
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.8);
+            pointer-events: none;
+            z-index: 10;
+        }
+        canvas {
+            image-rendering: pixelated;
+        }
+        .tab-active {
+            border-bottom: 4px solid #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center">
+
+    <header class="w-full max-w-md text-center py-6 px-4">
+        <h1 class="text-2xl font-bold text-blue-400">SSTV Robot Tool</h1>
+        <p class="text-slate-400 text-sm">Send & Receive images via sound</p>
+    </header>
+
+    <nav class="flex w-full max-w-md border-b border-slate-700 mb-4">
+        <button id="tabTransmit" class="flex-1 py-3 font-bold tab-active">TRANSMIT</button>
+        <button id="tabReceive" class="flex-1 py-3 font-bold text-slate-500">RECEIVE</button>
+    </nav>
+
+    <main class="w-full max-w-md px-4 pb-12">
+        
+        <!-- TRANSMIT SECTION -->
+        <section id="transmitSection" class="space-y-4">
+            <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Source Image</label>
+                <input type="file" id="imageInput" accept="image/*" class="block w-full text-xs text-slate-400
+                    file:mr-3 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-xs file:font-semibold
+                    file:bg-blue-600 file:text-white
+                    hover:file:bg-blue-700 cursor-pointer">
+                
+                <div class="relative mt-4 aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-600">
+                    <canvas id="previewCanvas" class="w-full h-full object-contain"></canvas>
+                    <div id="txScanline" class="scanline hidden"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <button id="encodeBtn" disabled class="bg-emerald-600 active:scale-95 text-white text-sm font-bold py-3 rounded-xl transition">
+                        GENERATE
+                    </button>
+                    <button id="playBtn" disabled class="bg-blue-600 active:scale-95 text-white text-sm font-bold py-3 rounded-xl transition">
+                        PLAY
+                    </button>
+                </div>
+
+                <div id="statusContainer" class="hidden mt-4">
+                    <div class="flex justify-between mb-1 text-[10px] uppercase font-bold text-slate-500">
+                        <span id="statusLabel">Encoding...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-1.5">
+                        <div id="progressBar" class="bg-blue-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="downloadContainer" class="hidden mt-4 text-center">
+                    <a id="downloadLink" class="text-blue-400 text-sm hover:underline font-medium cursor-pointer">
+                        Save Audio File
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- RECEIVE SECTION -->
+        <section id="receiveSection" class="hidden space-y-4">
+            <div class="bg-slate-800 rounded-2xl p-4 shadow-xl border border-slate-700">
+                <div class="flex justify-between items-center mb-4">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500">Live Decoder</label>
+                    <div id="signalIndicator" class="flex items-center space-x-1">
+                        <div id="sigLed" class="w-2 h-2 rounded-full bg-slate-600"></div>
+                        <span id="freqDisplay" class="text-[10px] font-mono text-slate-400">0000Hz</span>
+                    </div>
+                </div>
+
+                <div class="relative aspect-[4/3] bg-black rounded-lg overflow-hidden border border-slate-600">
+                    <canvas id="receiveCanvas" class="w-full h-full object-contain"></canvas>
+                    <div id="rxScanline" class="scanline hidden"></div>
+                </div>
+
+                <button id="listenBtn" class="w-full mt-4 bg-red-600 active:scale-95 text-white text-sm font-bold py-4 rounded-xl transition flex items-center justify-center space-x-2">
+                    <svg id="micIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"></path></svg>
+                    <span>START LISTENING</span>
+                </button>
+                
+                <p class="mt-4 text-[10px] text-slate-500 text-center leading-tight">
+                    Hold your robot's speaker near the mic. <br>Works best in a quiet room.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- Shared Constants & State ---
+        const SAMPLE_RATE = 44100;
+        const ROBOT36_WIDTH = 320;
+        const ROBOT36_HEIGHT = 240;
+
+        // UI Tabs Logic
+        const tabTx = document.getElementById('tabTransmit');
+        const tabRx = document.getElementById('tabReceive');
+        const secTx = document.getElementById('transmitSection');
+        const secRx = document.getElementById('receiveSection');
+
+        function switchTab(mode) {
+            if(mode === 'tx') {
+                tabTx.classList.add('tab-active');
+                tabRx.classList.remove('tab-active');
+                tabTx.classList.remove('text-slate-500');
+                tabRx.classList.add('text-slate-500');
+                secTx.classList.remove('hidden');
+                secRx.classList.add('hidden');
+            } else {
+                tabRx.classList.add('tab-active');
+                tabTx.classList.remove('tab-active');
+                tabRx.classList.remove('text-slate-500');
+                tabTx.classList.add('text-slate-500');
+                secRx.classList.remove('hidden');
+                secTx.classList.add('hidden');
+            }
+        }
+
+        tabTx.onclick = () => switchTab('tx');
+        tabRx.onclick = () => switchTab('rx');
+
+        // --- TRANSMITTER LOGIC ---
+        const imageInput = document.getElementById('imageInput');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const txCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+        const encodeBtn = document.getElementById('encodeBtn');
+        const playBtn = document.getElementById('playBtn');
+        const progressBar = document.getElementById('progressBar');
+        const statusContainer = document.getElementById('statusContainer');
+        const txScanline = document.getElementById('txScanline');
+        const downloadLink = document.getElementById('downloadLink');
+
+        let audioUrl = null;
+        let currentAudio = null;
+
+        imageInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    previewCanvas.width = ROBOT36_WIDTH;
+                    previewCanvas.height = ROBOT36_HEIGHT;
+                    txCtx.fillStyle = "black";
+                    txCtx.fillRect(0, 0, ROBOT36_WIDTH, ROBOT36_HEIGHT);
+                    const scale = Math.min(ROBOT36_WIDTH / img.width, ROBOT36_HEIGHT / img.height);
+                    txCtx.drawImage(img, (ROBOT36_WIDTH - img.width * scale) / 2, (ROBOT36_HEIGHT - img.height * scale) / 2, img.width * scale, img.height * scale);
+                    encodeBtn.disabled = false;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function generateTone(frequency, durationMs, currentPhase) {
+            const numSamples = Math.floor((durationMs / 1000) * SAMPLE_RATE);
+            const buffer = new Float32Array(numSamples);
+            const step = 2 * Math.PI * frequency / SAMPLE_RATE;
+            for (let i = 0; i < numSamples; i++) {
+                buffer[i] = Math.sin(currentPhase);
+                currentPhase += step;
+            }
+            return { buffer, nextPhase: currentPhase };
+        }
+
+        encodeBtn.onclick = async () => {
+            encodeBtn.disabled = true;
+            statusContainer.classList.remove('hidden');
+            const pixels = txCtx.getImageData(0, 0, ROBOT36_WIDTH, ROBOT36_HEIGHT).data;
+            let phase = 0;
+            const chunks = [];
+            const add = (f, d) => { const r = generateTone(f, d, phase); chunks.push(r.buffer); phase = r.nextPhase; };
+
+            // Header
+            add(1900, 300); add(1200, 10); add(1900, 300); // VOX
+            add(1200, 30); add(1900, 30); add(1200, 30); add(1200, 30); add(1900, 30); add(1900, 30); add(1200, 30); add(1900, 30); add(1200, 30); add(1200, 30); // VIS
+
+            for (let y = 0; y < ROBOT36_HEIGHT; y++) {
+                add(1200, 9); add(1500, 3); // Sync
+                for (let x = 0; x < ROBOT36_WIDTH; x++) {
+                    const i = (y * ROBOT36_WIDTH + x) * 4;
+                    const lum = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+                    add(1500 + (lum * 800 / 255), 88 / ROBOT36_WIDTH);
+                }
+                add(1500, 4.5); add(1900, 1.5); // Chroma separator
+                for (let x = 0; x < ROBOT36_WIDTH; x++) {
+                    const i = (y * ROBOT36_WIDTH + x) * 4;
+                    const lum = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
+                    const chroma = (y % 2 === 0) ? (pixels[i] - lum) : (pixels[i+2] - lum);
+                    add(1500 + (((chroma + 128) / 256) * 255 * 800 / 255), 44 / ROBOT36_WIDTH);
+                }
+                if (y % 15 === 0) {
+                    progressBar.style.width = (y / ROBOT36_HEIGHT * 100) + "%";
+                    document.getElementById('progressPercent').innerText = Math.round(y/ROBOT36_HEIGHT*100) + "%";
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+
+            const total = chunks.reduce((a, b) => a + b.length, 0);
+            const flat = new Float32Array(total);
+            let off = 0;
+            chunks.forEach(c => { flat.set(c, off); off += c.length; });
+            
+            const blob = exportWAV(flat);
+            audioUrl = URL.createObjectURL(blob);
+            downloadLink.href = audioUrl;
+            downloadLink.download = "sstv_robot32.wav";
+            document.getElementById('downloadContainer').classList.remove('hidden');
+            playBtn.disabled = false;
+            encodeBtn.disabled = false;
+            progressBar.style.width = "100%";
+        };
+
+        function exportWAV(samples) {
+            const b = new ArrayBuffer(44 + samples.length * 2);
+            const v = new DataView(b);
+            const s = (o, str) => { for(let i=0;i<str.length;i++) v.setUint8(o+i, str.charCodeAt(i)); };
+            s(0, 'RIFF'); v.setUint32(4, 32 + samples.length * 2, true); s(8, 'WAVE'); s(12, 'fmt ');
+            v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+            v.setUint32(24, SAMPLE_RATE, true); v.setUint32(28, SAMPLE_RATE*2, true);
+            v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, samples.length * 2, true);
+            for (let i=0; i<samples.length; i++) {
+                const x = Math.max(-1, Math.min(1, samples[i]));
+                v.setInt16(44 + i*2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+            }
+            return new Blob([v], { type: 'audio/wav' });
+        }
+
+        playBtn.onclick = () => {
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; txScanline.classList.add('hidden'); playBtn.innerText = "PLAY"; return; }
+            currentAudio = new Audio(audioUrl);
+            currentAudio.play();
+            playBtn.innerText = "STOP";
+            txScanline.classList.remove('hidden');
+            const loop = () => {
+                if(!currentAudio || currentAudio.paused) return;
+                const p = ((currentAudio.currentTime - 1.2) / 34) * 100;
+                txScanline.style.top = Math.min(100, Math.max(0, p)) + "%";
+                requestAnimationFrame(loop);
+            };
+            loop();
+            currentAudio.onended = () => { txScanline.classList.add('hidden'); playBtn.innerText = "PLAY"; currentAudio = null; };
+        };
+
+        // --- RECEIVER LOGIC (PITCH DETECTION) ---
+        const listenBtn = document.getElementById('listenBtn');
+        const rxCanvas = document.getElementById('receiveCanvas');
+        const rxCtx = rxCanvas.getContext('2d');
+        const freqDisplay = document.getElementById('freqDisplay');
+        const sigLed = document.getElementById('sigLed');
+        const rxScanline = document.getElementById('rxScanline');
+
+        let audioCtx, analyser, dataArray, micStream;
+        let isListening = false;
+        let currentY = 0;
+        let lastSyncTime = 0;
+
+        rxCanvas.width = ROBOT36_WIDTH;
+        rxCanvas.height = ROBOT36_HEIGHT;
+        rxCtx.fillStyle = 'black';
+        rxCtx.fillRect(0,0,320,240);
+
+        listenBtn.onclick = async () => {
+            if (isListening) {
+                micStream.getTracks().forEach(t => t.stop());
+                isListening = false;
+                listenBtn.innerHTML = `<span>START LISTENING</span>`;
+                listenBtn.classList.replace('bg-slate-700', 'bg-red-600');
+                rxScanline.classList.add('hidden');
+                return;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                dataArray = new Float32Array(analyser.frequencyBinCount);
+                
+                isListening = true;
+                listenBtn.innerHTML = `<span>STOP LISTENING</span>`;
+                listenBtn.classList.replace('bg-red-600', 'bg-slate-700');
+                rxScanline.classList.remove('hidden');
+                currentY = 0;
+                processAudio();
+            } catch (err) {
+                console.error("Mic access denied", err);
+            }
+        };
+
+        function getPitch() {
+            analyser.getFloatFrequencyData(dataArray);
+            let maxVal = -Infinity;
+            let maxIdx = -1;
+            for(let i=0; i<dataArray.length; i++) {
+                if(dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
+            }
+            if (maxVal < -80) return 0;
+            return maxIdx * (audioCtx.sampleRate / analyser.fftSize);
+        }
+
+        function processAudio() {
+            if (!isListening) return;
+            const freq = getPitch();
+            freqDisplay.innerText = Math.round(freq) + "Hz";
+            
+            // Visual Indicator for signal presence
+            sigLed.style.backgroundColor = freq > 1100 && freq < 2400 ? '#10b981' : '#475569';
+
+            // Very simple Sync detection (1200Hz pulse)
+            if (Math.abs(freq - 1200) < 60) {
+                const now = Date.now();
+                if (now - lastSyncTime > 100) { // Debounce lines
+                    currentY = (currentY + 1) % ROBOT36_HEIGHT;
+                    lastSyncTime = now;
+                }
+            }
+
+            // Map pixel color (simplified grayscale for robustness in noisy environments)
+            if (freq >= 1500 && freq <= 2300) {
+                const val = ((freq - 1500) / 800) * 255;
+                rxCtx.fillStyle = `rgb(${val},${val},${val})`;
+                // Scan across the line based on time since sync
+                const x = ((Date.now() - lastSyncTime) / 140) * ROBOT36_WIDTH;
+                if (x < ROBOT36_WIDTH) {
+                    rxCtx.fillRect(x, currentY, 2, 1);
+                }
+            }
+
+            rxScanline.style.top = (currentY / ROBOT36_HEIGHT * 100) + "%";
+            requestAnimationFrame(processAudio);
+        }
+    </script>
+</body>
+</html>
