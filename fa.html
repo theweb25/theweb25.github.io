@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fire Alarm Simulator - v2.4.0 Debug</title>
+    <title>Fire Alarm Simulator - v2.5.0 Debug</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
@@ -50,7 +50,7 @@
 
     <!-- Version Corner Tag -->
     <div class="fixed bottom-4 right-4 z-[60] version-tag text-[10px] text-slate-600 font-bold uppercase tracking-widest pointer-events-none">
-        System Ver: 2.4.1-Stable
+        System Ver: 2.5.0-Stable
     </div>
 
     <!-- Start Overlay -->
@@ -91,15 +91,21 @@
                     <div class="w-32 h-44 bg-blue-900/50 rounded-xl border-2 border-blue-950 flex justify-center shadow-inner">
                         <div id="emitter-handle" class="t-bar w-24 h-14 bg-white rounded-lg mt-6 shadow-2xl flex flex-col items-center justify-center relative z-20">
                             <div class="w-16 h-2 bg-slate-300 rounded-full mb-1"></div>
-                            <span class="text-[9px] text-blue-700 font-black uppercase italic">Pull & Hold</span>
+                            <span class="text-[9px] text-blue-700 font-black uppercase italic" id="emitter-label">Pull & Hold</span>
                         </div>
                         <div class="absolute top-6 w-5 h-28 bg-slate-400 rounded-b-lg border-x border-slate-500"></div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 bg-blue-950/40 px-4 py-2 rounded-full border border-blue-700/30">
-                    <div id="emitter-led" class="w-3 h-3 rounded-full bg-blue-900 transition-all duration-100"></div>
-                    <span class="text-xs font-mono font-bold text-blue-300 tracking-wider">OUTPUT: 620Hz</span>
+                <div class="flex flex-col gap-2 items-center w-full">
+                    <div class="flex items-center gap-3 bg-blue-950/40 px-4 py-2 rounded-full border border-blue-700/30">
+                        <div id="emitter-led" class="w-3 h-3 rounded-full bg-blue-900 transition-all duration-100"></div>
+                        <span class="text-xs font-mono font-bold text-blue-300 tracking-wider">FREQ: <span id="emitter-freq-display">620</span>Hz</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-freq-trigger" class="bg-blue-600 hover:bg-blue-500 text-[9px] px-3 py-1 rounded-md font-bold uppercase transition-colors">Set Trigger (620)</button>
+                        <button id="btn-freq-reset" class="bg-slate-700 hover:bg-slate-600 text-[9px] px-3 py-1 rounded-md font-bold uppercase transition-colors">Set Reset (720)</button>
+                    </div>
                 </div>
             </div>
 
@@ -166,10 +172,10 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-                    <div>
+                <div class="grid grid-cols-1 gap-2 pt-2 border-t border-slate-800">
+                    <div class="flex justify-between items-center">
                         <span class="text-slate-500 font-bold">BANDWIDTH:</span>
-                        <div class="text-white">620Hz ± 30</div>
+                        <div class="text-white">620 / 720 Hz ± 25</div>
                     </div>
                     <div>
                         <span class="text-slate-500 font-bold">SENSITIVITY:</span>
@@ -194,15 +200,18 @@
 
     <script>
         const FREQ_SIGNAL = 620;
+        const FREQ_RESET = 720;
         const FREQ_ALARM = 520;
-        const TOLERANCE = 30;
+        const TOLERANCE = 25;
         let isAlarmActive = false;
         let isMicOn = false;
         let chainReactionEnabled = false;
+        let currentEmitterFreq = FREQ_SIGNAL;
 
         let audioCtx;
         let emitterOsc, emitterGain;
         let sounderOsc, sounderGain;
+        let resetSynth;
 
         // Debug Elements
         const dbgEmitStatus = document.getElementById('dbg-emit-status');
@@ -221,7 +230,7 @@
             emitterOsc = audioCtx.createOscillator();
             emitterGain = audioCtx.createGain();
             emitterOsc.type = 'sine';
-            emitterOsc.frequency.setValueAtTime(FREQ_SIGNAL, audioCtx.currentTime);
+            emitterOsc.frequency.setValueAtTime(currentEmitterFreq, audioCtx.currentTime);
             emitterGain.gain.setValueAtTime(0, audioCtx.currentTime);
             emitterOsc.connect(emitterGain);
             emitterGain.connect(audioCtx.destination);
@@ -235,6 +244,11 @@
             sounderOsc.connect(sounderGain);
             sounderGain.connect(audioCtx.destination);
             sounderOsc.start();
+
+            resetSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.05, decay: 0.1, sustain: 0.3, release: 1 }
+            }).toDestination();
         };
 
         const meter = new Tone.FFT(4096);
@@ -252,9 +266,8 @@
         const strobeInner = document.getElementById('strobe-inner');
         const sensSlider = document.getElementById('sensitivity-slider');
         const chainToggle = document.getElementById('chain-toggle');
-
-        const panes = { emitter: document.getElementById('pane-emitter'), receiver: document.getElementById('pane-receiver') };
-        const switches = { emitter: document.getElementById('switch-emitter'), receiver: document.getElementById('switch-receiver') };
+        const emitterFreqDisplay = document.getElementById('emitter-freq-display');
+        const emitterLabel = document.getElementById('emitter-label');
 
         startApp.onclick = async () => {
             setupAudio();
@@ -262,6 +275,9 @@
             await Tone.start();
             audioGate.classList.add('hidden');
         };
+
+        const panes = { emitter: document.getElementById('pane-emitter'), receiver: document.getElementById('pane-receiver') };
+        const switches = { emitter: document.getElementById('switch-emitter'), receiver: document.getElementById('switch-receiver') };
 
         switches.emitter.onclick = () => {
             panes.emitter.classList.remove('hidden-pane');
@@ -275,6 +291,20 @@
             panes.emitter.classList.add('hidden-pane');
             switches.receiver.className = "flex-1 py-3 rounded-xl font-bold transition-all bg-red-600 text-white shadow-lg";
             switches.emitter.className = "flex-1 py-3 rounded-xl font-bold transition-all text-slate-400 hover:text-white";
+        };
+
+        // Emitter Frequency Controls
+        document.getElementById('btn-freq-trigger').onclick = () => {
+            currentEmitterFreq = FREQ_SIGNAL;
+            emitterFreqDisplay.textContent = FREQ_SIGNAL;
+            emitterLabel.textContent = "Pull & Hold";
+            if(emitterOsc) emitterOsc.frequency.setValueAtTime(FREQ_SIGNAL, audioCtx.currentTime);
+        };
+        document.getElementById('btn-freq-reset').onclick = () => {
+            currentEmitterFreq = FREQ_RESET;
+            emitterFreqDisplay.textContent = FREQ_RESET;
+            emitterLabel.textContent = "Reset Signal";
+            if(emitterOsc) emitterOsc.frequency.setValueAtTime(FREQ_RESET, audioCtx.currentTime);
         };
 
         const startEmitting = () => {
@@ -333,6 +363,8 @@
         }
 
         function resetAlarm() {
+            if (!isAlarmActive) return;
+            
             isAlarmActive = false;
             clearInterval(alarmInterval);
             sounderGain.gain.setValueAtTime(0, audioCtx.currentTime);
@@ -340,7 +372,15 @@
             receiverHandle.classList.remove('pulled');
             strobeInner.style.opacity = "0";
             strobeOverlay.classList.remove('strobe-effect');
+            
+            // Handle emitter if it was in repeater mode
             stopEmitting();
+
+            // Play Reset Tone Sequence
+            const now = Tone.now();
+            resetSynth.triggerAttackRelease("G4", "16n", now);
+            resetSynth.triggerAttackRelease("B4", "16n", now + 0.1);
+            resetSynth.triggerAttackRelease("D5", "8n", now + 0.2);
         }
 
         sensSlider.oninput = (e) => {
@@ -382,13 +422,18 @@
             
             if (peakVal > threshold) {
                 dbgBarPwr.classList.replace('bg-slate-600', 'bg-red-500');
+                
+                // Detection Logic
+                const isTriggerDetected = Math.abs(peakFreq - FREQ_SIGNAL) < TOLERANCE;
+                const isResetDetected = Math.abs(peakFreq - FREQ_RESET) < TOLERANCE;
+
+                if (isTriggerDetected && !isAlarmActive) {
+                    triggerAlarm();
+                } else if (isResetDetected && isAlarmActive) {
+                    resetAlarm();
+                }
             } else {
                 dbgBarPwr.classList.replace('bg-red-500', 'bg-slate-600');
-            }
-
-            const isSignalDetected = Math.abs(peakFreq - FREQ_SIGNAL) < TOLERANCE;
-            if (peakVal > threshold && isSignalDetected) {
-                triggerAlarm();
             }
         }
 
@@ -407,7 +452,6 @@
 
         resetBtn.onclick = resetAlarm;
         
-        // Initial setup
         const initialPercentage = ((parseInt(sensSlider.value) + 80) / 60) * 100;
         dbgBarMarker.style.left = `${initialPercentage}%`;
     </script>
