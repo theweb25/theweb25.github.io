@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fire Alarm Simulator - Enhanced Activation</title>
+    <title>Fire Alarm Simulator - v2.4.0 Debug</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
@@ -35,25 +35,36 @@
         .hidden-pane { display: none; }
         .perspective-1000 { perspective: 1000px; }
         
-        input[type=range] {
-            accent-color: #ef4444;
+        .debug-panel {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(51, 65, 85, 1);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+        .version-tag {
+            font-family: ui-monospace, monospace;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden font-sans">
 
+    <!-- Version Corner Tag -->
+    <div class="fixed bottom-4 right-4 z-[60] version-tag text-[10px] text-slate-600 font-bold uppercase tracking-widest pointer-events-none">
+        System Ver: 2.4.1-Stable
+    </div>
+
     <!-- Start Overlay -->
     <div id="audio-gate" class="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center text-center p-6">
         <div class="max-w-xs">
-            <div class="w-20 h-20 bg-red-600 rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse">
+            <div class="w-20 h-20 bg-red-600 rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse shadow-[0_0_30px_rgba(220,38,38,0.5)]">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 </svg>
             </div>
-            <h1 class="text-2xl font-black mb-2 uppercase tracking-tighter">System Ready</h1>
-            <p class="text-slate-400 mb-8 text-sm">Initializing high-gain activation signal and Code 3 sounders.</p>
+            <h1 class="text-2xl font-black mb-2 uppercase tracking-tighter text-white">Diagnostic Boot</h1>
+            <p class="text-slate-400 mb-8 text-sm">Calibration required for frequency-dependent remote activation.</p>
             <button id="start-app" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95">
-                Go to Stations
+                Start Diagnostics
             </button>
         </div>
     </div>
@@ -69,11 +80,11 @@
         </div>
 
         <!-- EMITTER PANE -->
-        <div id="pane-emitter" class="space-y-6">
+        <div id="pane-emitter" class="space-y-4">
             <div class="pull-station-emitter w-full aspect-[3/4] rounded-2xl p-8 flex flex-col items-center justify-between border-t-4 border-blue-400 relative">
                 <div class="text-center">
                     <h2 class="text-white text-3xl font-black italic tracking-tighter leading-none uppercase">Signal</h2>
-                    <p class="text-[10px] font-bold text-blue-200 mt-2 uppercase tracking-widest">High Gain Activator</p>
+                    <p class="text-[10px] font-bold text-blue-200 mt-2 uppercase tracking-widest">Diagnostic Mode</p>
                 </div>
 
                 <div id="emitter-pull-trigger" class="relative group cursor-pointer perspective-1000">
@@ -88,19 +99,29 @@
 
                 <div class="flex items-center gap-3 bg-blue-950/40 px-4 py-2 rounded-full border border-blue-700/30">
                     <div id="emitter-led" class="w-3 h-3 rounded-full bg-blue-900 transition-all duration-100"></div>
-                    <span class="text-xs font-mono font-bold text-blue-300 tracking-wider">620Hz ACTIVE</span>
+                    <span class="text-xs font-mono font-bold text-blue-300 tracking-wider">OUTPUT: 620Hz</span>
                 </div>
             </div>
-            
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Repeater Mode</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="chain-toggle" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
+
+            <div class="debug-panel p-4 rounded-xl text-[10px] space-y-2 border-l-4 border-blue-500 shadow-xl">
+                <div class="flex justify-between">
+                    <span>OSC_STATUS:</span>
+                    <span id="dbg-emit-status" class="text-blue-400 font-bold">STANDBY</span>
                 </div>
-                <p class="text-[10px] text-slate-500">Automatically broadcast the activation signal if the local alarm triggers.</p>
+                <div class="flex justify-between">
+                    <span>OUTPUT_GAIN:</span>
+                    <span id="dbg-emit-gain" class="text-slate-400">0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>REPEATER:</span>
+                    <span id="dbg-emit-repeater" class="text-slate-500 font-bold uppercase">OFF</span>
+                </div>
+                <div class="mt-2 pt-2 border-t border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 font-bold uppercase tracking-tight">Enable Auto-Repeater</span>
+                        <input type="checkbox" id="chain-toggle" class="accent-blue-500 h-4 w-4">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -109,7 +130,7 @@
             <div class="pull-station-body w-full aspect-[3/4] rounded-2xl p-8 flex flex-col items-center justify-between border-t-4 border-red-400 relative">
                 <div class="text-center">
                     <h2 class="text-white text-3xl font-black italic tracking-tighter leading-none uppercase">Fire</h2>
-                    <p class="text-[10px] font-bold text-red-200 mt-2 uppercase tracking-widest">Manual Station</p>
+                    <p class="text-[10px] font-bold text-red-200 mt-2 uppercase tracking-widest">Diagnostic Mode</p>
                 </div>
 
                 <div id="receiver-pull-trigger" class="relative group cursor-pointer perspective-1000">
@@ -128,23 +149,39 @@
                 </div>
             </div>
 
-            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-                <div class="space-y-2">
-                    <div class="flex justify-between items-end">
-                        <label class="text-[10px] font-black uppercase tracking-widest text-slate-500">Detection Sensitivity</label>
-                        <span id="sensitivity-val" class="text-xs font-mono text-red-400">Normal</span>
+            <div class="debug-panel p-4 rounded-xl text-[10px] space-y-3 border-l-4 border-red-500 shadow-xl">
+                <div class="flex justify-between items-center mb-1">
+                    <span>LIVE_SPECTRUM:</span>
+                    <span id="dbg-recv-peak" class="font-bold text-red-400">0 Hz</span>
+                </div>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[8px] text-slate-500">
+                        <span>INPUT: <span id="dbg-recv-pwr">-Infinity dB</span></span>
+                        <span>GATE: <span id="dbg-recv-thresh">-50 dB</span></span>
                     </div>
-                    <input type="range" id="sensitivity-slider" min="-80" max="-20" value="-50" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex relative">
+                        <div id="dbg-bar-pwr" class="h-full bg-slate-600 transition-all duration-75" style="width: 0%"></div>
+                        <div id="dbg-bar-marker" class="absolute h-full w-0.5 bg-red-500 shadow-[0_0_5px_red] top-0" style="left: 50%"></div>
+                    </div>
                 </div>
 
-                <button id="mic-activate" class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-500 py-3 rounded-xl font-bold border border-red-900/50 transition-all text-sm uppercase tracking-widest">
-                    Enable Activation Listener
-                </button>
-                <div id="listening-indicator" class="hidden flex flex-col items-center justify-center gap-1 text-green-500 font-mono text-[9px] font-bold animate-pulse">
-                    <div class="flex items-center gap-2">
-                        <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                        LISTENING FOR 620HZ ACTIVATION...
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                    <div>
+                        <span class="text-slate-500 font-bold">BANDWIDTH:</span>
+                        <div class="text-white">620Hz ± 30</div>
                     </div>
+                    <div>
+                        <span class="text-slate-500 font-bold">SENSITIVITY:</span>
+                        <input type="range" id="sensitivity-slider" min="-80" max="-20" value="-50" class="w-full accent-red-500">
+                    </div>
+                </div>
+
+                <button id="mic-activate" class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-500 py-2 rounded-lg font-bold border border-red-900/50 transition-all text-[9px] uppercase tracking-widest">
+                    Open Listen Pipeline
+                </button>
+                <div id="listening-indicator" class="hidden text-center text-green-500 font-bold animate-pulse uppercase tracking-tighter">
+                    DSP Receiver Active
                 </div>
             </div>
         </div>
@@ -158,16 +195,24 @@
     <script>
         const FREQ_SIGNAL = 620;
         const FREQ_ALARM = 520;
-        const TOLERANCE = 30; // Slightly wider tolerance for microphone variability
+        const TOLERANCE = 30;
         let isAlarmActive = false;
         let isMicOn = false;
         let chainReactionEnabled = false;
 
         let audioCtx;
-        let emitterOsc;
-        let emitterGain;
-        let sounderOsc;
-        let sounderGain;
+        let emitterOsc, emitterGain;
+        let sounderOsc, sounderGain;
+
+        // Debug Elements
+        const dbgEmitStatus = document.getElementById('dbg-emit-status');
+        const dbgEmitGain = document.getElementById('dbg-emit-gain');
+        const dbgEmitRepeater = document.getElementById('dbg-emit-repeater');
+        const dbgRecvPeak = document.getElementById('dbg-recv-peak');
+        const dbgRecvPwr = document.getElementById('dbg-recv-pwr');
+        const dbgRecvThresh = document.getElementById('dbg-recv-thresh');
+        const dbgBarPwr = document.getElementById('dbg-bar-pwr');
+        const dbgBarMarker = document.getElementById('dbg-bar-marker');
 
         const setupAudio = () => {
             if (audioCtx) return;
@@ -192,7 +237,6 @@
             sounderOsc.start();
         };
 
-        // Use a higher FFT size for better frequency resolution
         const meter = new Tone.FFT(4096);
         const mic = new Tone.UserMedia();
         mic.connect(meter);
@@ -207,7 +251,6 @@
         const listeningIndicator = document.getElementById('listening-indicator');
         const strobeInner = document.getElementById('strobe-inner');
         const sensSlider = document.getElementById('sensitivity-slider');
-        const sensValLabel = document.getElementById('sensitivity-val');
         const chainToggle = document.getElementById('chain-toggle');
 
         const panes = { emitter: document.getElementById('pane-emitter'), receiver: document.getElementById('pane-receiver') };
@@ -239,8 +282,10 @@
             emitterHandle.classList.add('pulled');
             emitterLed.classList.replace('bg-blue-900', 'bg-blue-400');
             emitterLed.classList.add('shadow-[0_0_15px_#60a5fa]');
-            // Boosted gain to 0.9 for much louder volume
             emitterGain.gain.setTargetAtTime(0.9, audioCtx.currentTime, 0.05);
+            dbgEmitStatus.textContent = "EMITTING";
+            dbgEmitStatus.className = "text-blue-400 font-bold animate-pulse";
+            dbgEmitGain.textContent = "0.90";
         };
 
         const stopEmitting = () => {
@@ -249,6 +294,9 @@
             emitterLed.classList.replace('bg-blue-400', 'bg-blue-900');
             emitterLed.classList.remove('shadow-[0_0_15px_#60a5fa]');
             emitterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+            dbgEmitStatus.textContent = "STANDBY";
+            dbgEmitStatus.className = "text-slate-500 font-bold";
+            dbgEmitGain.textContent = "0.00";
         };
 
         const emitterTrigger = document.getElementById('emitter-pull-trigger');
@@ -296,10 +344,9 @@
         }
 
         sensSlider.oninput = (e) => {
-            const val = parseInt(e.target.value);
-            if (val > -35) sensValLabel.textContent = "Very Sharp";
-            else if (val > -55) sensValLabel.textContent = "Normal";
-            else sensValLabel.textContent = "Dull (Nearby Only)";
+            dbgRecvThresh.textContent = e.target.value + " dB";
+            const percentage = ((parseInt(e.target.value) + 80) / 60) * 100;
+            dbgBarMarker.style.left = `${percentage}%`;
         };
 
         document.getElementById('mic-activate').onclick = async () => {
@@ -326,17 +373,30 @@
                 }
             }
 
-            const threshold = parseInt(sensSlider.value);
+            dbgRecvPeak.textContent = `${Math.round(peakFreq)} Hz`;
+            dbgRecvPwr.textContent = `${Math.round(peakVal)} dB`;
             
-            // Focus purely on the 620Hz Emitter Signal
-            const isSignalDetected = Math.abs(peakFreq - FREQ_SIGNAL) < TOLERANCE;
+            const threshold = parseInt(sensSlider.value);
+            const percentage = ((peakVal + 80) / 60) * 100;
+            dbgBarPwr.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+            
+            if (peakVal > threshold) {
+                dbgBarPwr.classList.replace('bg-slate-600', 'bg-red-500');
+            } else {
+                dbgBarPwr.classList.replace('bg-red-500', 'bg-slate-600');
+            }
 
+            const isSignalDetected = Math.abs(peakFreq - FREQ_SIGNAL) < TOLERANCE;
             if (peakVal > threshold && isSignalDetected) {
                 triggerAlarm();
             }
         }
 
-        chainToggle.onchange = (e) => { chainReactionEnabled = e.target.checked; };
+        chainToggle.onchange = (e) => { 
+            chainReactionEnabled = e.target.checked; 
+            dbgEmitRepeater.textContent = chainReactionEnabled ? "ACTIVE" : "OFF";
+            dbgEmitRepeater.className = chainReactionEnabled ? "text-green-400 font-bold uppercase" : "text-slate-500 font-bold uppercase";
+        };
 
         document.getElementById('receiver-pull-trigger').onclick = () => {
             if (!isAlarmActive) {
@@ -346,6 +406,10 @@
         };
 
         resetBtn.onclick = resetAlarm;
+        
+        // Initial setup
+        const initialPercentage = ((parseInt(sensSlider.value) + 80) / 60) * 100;
+        dbgBarMarker.style.left = `${initialPercentage}%`;
     </script>
 </body>
 </html>
