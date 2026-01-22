@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seedable 3D Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 16px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 100;
+            width: 280px;
+            user-select: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+        }
+
+        #ui.hidden {
+            opacity: 0;
+            transform: translateX(-20px);
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .row { margin-bottom: 15px; }
+
+        label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+            color: #007aff;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            color: white;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            border-color: #007aff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+            width: 100%;
+            background: #007aff;
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        button:active { transform: scale(0.98); }
+        button:hover { background: #0056b3; }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: #007aff; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        #overlay-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            text-align: right;
+            pointer-events: none;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 5px;
+            text-transform: uppercase;
+        }
+
+        #funny-tag {
+            background: #ff0000;
+            color: white;
+            font-weight: bold;
+            display: none;
+        }
+
+        .ui-footer-hint {
+            margin-top: 15px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+            display: block;
+        }
+
+        /* Maintenance Screen */
+        #maintenance-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #maintenance-screen.active {
+            display: flex;
+        }
+
+        #maintenance-text {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 300;
+            animation: pulse 2s infinite ease-in-out;
+            margin-bottom: 40px;
+        }
+
+        #maintenance-settings {
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            align-items: center;
+        }
+
+        #maintenance-settings input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+            padding: 5px;
+            outline: none;
+            width: 120px;
+            text-align: center;
+        }
+
+        #maintenance-settings label {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 9px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Progress Bar Styles */
+        #warp-progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #warp-progress-container.visible {
+            opacity: 1;
+        }
+
+        #warp-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #007aff;
+            transition: width 0.1s linear;
+        }
+        
+        .corrupted-bar {
+            background: #ff0000 !important;
+            box-shadow: 0 0 10px #ff0000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="maintenance-screen">
+        <div id="maintenance-text">Maintenance</div>
+        <div id="maintenance-settings">
+            <div>
+                <label>DNA SEED</label>
+                <input type="text" id="maintSeedInput" placeholder="DNA...">
+            </div>
+            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+            <div>
+                <label>WARP INTERVAL</label>
+                <input type="number" id="maintIntervalInput" step="0.5">
+            </div>
+            <button id="maintRandomBtn" style="width: auto; padding: 8px 15px; font-size: 11px;">RANDOMIZE</button>
+        </div>
+        <div style="margin-top: 20px; font-size: 10px; color: rgba(255,255,255,0.2);">Press <b>E</b> to Restore</div>
+    </div>
+
+    <div id="ui">
+        <div class="row">
+            <label>World DNA (Seed)</label>
+            <input type="text" id="seedInput" placeholder="Enter anything...">
+        </div>
+        
+        <div class="row">
+            <button id="randomizeBtn">New Dimension</button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 20px 0;">
+
+        <div class="row toggle-container">
+            <label style="margin-bottom: 0;">Auto-Warp</label>
+            <label class="switch">
+                <input type="checkbox" id="autoToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="row">
+            <label>Warp Interval (s)</label>
+            <input type="number" id="intervalInput" value="4" min="0.5" step="0.5">
+        </div>
+
+        <span class="ui-footer-hint">Press <b>H</b> to hide UI | <b>E</b> for Maintenance</span>
+    </div>
+
+    <div id="overlay-info">
+        <div id="funny-tag" class="tag">EVENT ACTIVE!</div>
+        <div id="worldType" class="tag">...</div>
+        <div id="worldWeather" class="tag">...</div>
+        <div id="worldTheme" class="tag">...</div>
+    </div>
+
+    <div id="warp-progress-container">
+        <div id="warp-progress-bar"></div>
+    </div>
+
+    <script>
+        class SeededRandom {
+            constructor(seed) {
+                this.seedStr = seed.toString();
+                this.state = this.hashString(this.seedStr);
+            }
+            hashString(str) {
+                let hash = 2166136261;
+                for (let i = 0; i < str.length; i++) {
+                    hash ^= str.charCodeAt(i);
+                    hash = Math.imul(hash, 16777619);
+                }
+                return hash >>> 0;
+            }
+            next() {
+                this.state = (this.state ^ (this.state << 13)) >>> 0;
+                this.state = (this.state ^ (this.state >> 17)) >>> 0;
+                this.state = (this.state ^ (this.state << 5)) >>> 0;
+                return (this.state >>> 0) / 4294967296;
+            }
+            range(min, max) { return min + this.next() * (max - min); }
+            choice(arr) { return arr[Math.floor(this.next() * arr.length)]; }
+            color() { return new THREE.Color().setHSL(this.next(), 0.8, 0.5); }
+        }
+
+        let scene, camera, renderer, objects = [], particles = [];
+        let autoInterval = null;
+        let warpStartTime = 0;
+        let targetCameraPos = new THREE.Vector3(0, 10, 20);
+        let weatherData = { type: 'Clear', color: 0xffffff, speed: 1 };
+        let stormTick = 0;
+        let isCorrupted = false;
+        let isMaintenance = false;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialSeed = urlParams.get('seed') || Math.random().toString(36).substring(7);
+            
+            // Sync values initially
+            seedInput.value = initialSeed;
+            maintSeedInput.value = initialSeed;
+            maintIntervalInput.value = intervalInput.value;
+            
+            generateWorld(initialSeed);
+            animate();
+        }
+
+        function createWeather(rng) {
+            const types = isCorrupted ? ['Storm', 'Rain', 'Mist'] : ['Clear', 'Rain', 'Snow', 'Storm', 'Mist'];
+            weatherData.type = rng.choice(types);
+            weatherData.color = isCorrupted ? new THREE.Color(0xff0000) : rng.color();
+            weatherData.speed = rng.range(0.5, 5);
+            
+            document.getElementById('worldWeather').innerText = weatherData.type;
+
+            if (weatherData.type === 'Clear') return;
+
+            const partCount = weatherData.type === 'Mist' ? 500 : 2000;
+            const geo = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<partCount; i++) {
+                pos.push(rng.range(-150, 150), rng.range(0, 100), rng.range(-150, 150));
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            
+            const mat = new THREE.PointsMaterial({
+                color: weatherData.color,
+                size: weatherData.type === 'Snow' ? 0.4 : weatherData.type === 'Mist' ? 2 : 0.15,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            const system = new THREE.Points(geo, mat);
+            scene.add(system);
+            particles.push(system);
+        }
+
+        function generateWorld(seed) {
+            isCorrupted = seed.toLowerCase().includes('x45');
+            const funnyTag = document.getElementById('funny-tag');
+            const progressBar = document.getElementById('warp-progress-bar');
+            
+            if (isCorrupted) {
+                funnyTag.style.display = 'inline-block';
+                funnyTag.innerText = "CORRUPTION DETECTED";
+                funnyTag.style.background = "#ff0000";
+                funnyTag.style.color = "white";
+                progressBar.classList.add('corrupted-bar');
+            } else {
+                funnyTag.style.display = 'none';
+                progressBar.classList.remove('corrupted-bar');
+            }
+
+            objects.forEach(obj => { if(obj.geometry) obj.geometry.dispose(); scene.remove(obj); });
+            particles.forEach(p => { if(p.geometry) p.geometry.dispose(); scene.remove(p); });
+            objects = []; particles = [];
+            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
+
+            const rng = new SeededRandom(seed);
+            
+            const skyTop = isCorrupted ? new THREE.Color(0x000000) : rng.color();
+            const skyMid = isCorrupted ? new THREE.Color(0x220000) : rng.color();
+            const skyBot = isCorrupted ? new THREE.Color(0x000000) : rng.color();
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 2; canvas.height = 512;
+            const context = canvas.getContext('2d');
+            const grad = context.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, skyTop.getStyle());
+            grad.addColorStop(0.5, skyMid.getStyle());
+            grad.addColorStop(1, skyBot.getStyle());
+            context.fillStyle = grad;
+            context.fillRect(0, 0, 2, 512);
+            const skyTex = new THREE.CanvasTexture(canvas);
+            scene.background = skyTex;
+
+            const worldType = isCorrupted ? 'VOID_ERROR' : rng.choice(['Vortex', 'Shattered', 'Grid', 'Clusters', 'Spire', 'Waves']);
+            document.getElementById('worldType').innerText = worldType;
+            document.getElementById('worldTheme').innerText = isCorrupted ? '0xDEADBEEF' : `DNA-${rng.state.toString(16).slice(0,4)}`;
+
+            const sun = new THREE.DirectionalLight(isCorrupted ? 0xff0000 : rng.color(), 1.5);
+            sun.position.set(rng.range(-50, 50), 50, rng.range(-50, 50));
+            scene.add(sun);
+            scene.add(new THREE.AmbientLight(isCorrupted ? 0x110000 : rng.color(), 0.3));
+
+            createWeather(rng);
+
+            const count = isCorrupted ? 300 : Math.floor(rng.range(50, 150));
+            const geometries = [
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.IcosahedronGeometry(1, 0),
+                new THREE.TorusGeometry(0.7, 0.3, 8, 24),
+                new THREE.ConeGeometry(0.5, 2, 4)
+            ];
+
+            for(let i=0; i<count; i++) {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: isCorrupted ? new THREE.Color(rng.next() > 0.5 ? 0x000000 : 0x330000) : rng.color(),
+                    metalness: rng.range(0, 1),
+                    roughness: rng.range(0, 1),
+                    emissive: isCorrupted ? new THREE.Color(0xff0000) : rng.color(),
+                    emissiveIntensity: isCorrupted ? rng.range(0, 2) : rng.range(0, 0.5),
+                    wireframe: isCorrupted && rng.next() > 0.7
+                });
+                
+                const mesh = new THREE.Mesh(rng.choice(geometries), mat);
+                
+                if (isCorrupted) {
+                    mesh.position.set(rng.range(-100, 100), rng.range(-20, 80), rng.range(-100, 100));
+                } else if (worldType === 'Vortex') {
+                    const angle = i * 0.2;
+                    const dist = i * 0.5;
+                    mesh.position.set(Math.cos(angle)*dist, Math.sin(i*0.1)*5, Math.sin(angle)*dist);
+                } else if (worldType === 'Grid') {
+                    mesh.position.set(Math.floor(i/10)*8 - 40, 0, (i%10)*8 - 40);
+                } else {
+                    mesh.position.set(rng.range(-80, 80), rng.range(0, 40), rng.range(-80, 80));
+                }
+
+                const baseScale = rng.range(0.5, 5);
+                const widthScale = rng.range(0.2, 3) * baseScale;
+                const heightScale = rng.range(0.2, 5) * baseScale;
+                const depthScale = rng.range(0.2, 3) * baseScale;
+                
+                mesh.scale.set(widthScale, heightScale, depthScale);
+                
+                mesh.userData = {
+                    rotAxis: new THREE.Vector3(rng.next(), rng.next(), rng.next()).normalize(),
+                    rotSpeed: isCorrupted ? rng.range(-0.5, 0.5) : rng.range(-0.05, 0.05),
+                    floatAmp: rng.range(0.1, 4),
+                    floatFreq: rng.range(0.2, 3),
+                    floatOffset: rng.next() * Math.PI * 2,
+                    isGlitching: isCorrupted && rng.next() > 0.8
+                };
+
+                scene.add(mesh);
+                objects.push(mesh);
+            }
+
+            targetCameraPos.set(rng.range(-60, 60), rng.range(15, 50), rng.range(40, 80));
+            warpStartTime = Date.now();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isMaintenance) return; // Stop rendering when in maintenance
+
+            const now = Date.now();
+            const time = now * 0.001;
+
+            camera.position.lerp(targetCameraPos, isCorrupted ? 0.01 : 0.02);
+            camera.lookAt(0, 5, 0);
+
+            // Progress Bar Logic
+            if (autoToggle.checked) {
+                const interval = parseFloat(intervalInput.value) * 1000;
+                const elapsed = now - warpStartTime;
+                const progress = Math.min(100, (elapsed / interval) * 100);
+                document.getElementById('warp-progress-bar').style.width = progress + '%';
+            }
+
+            particles.forEach(p => {
+                const positions = p.geometry.attributes.position.array;
+                for(let i=0; i<positions.length; i+=3) {
+                    if (weatherData.type === 'Rain' || isCorrupted) {
+                        positions[i+1] -= isCorrupted ? weatherData.speed * 2 : weatherData.speed;
+                    } else if (weatherData.type === 'Snow') {
+                        positions[i+1] -= weatherData.speed * 0.3;
+                        positions[i] += Math.sin(time + i) * 0.1;
+                    } else if (weatherData.type === 'Mist') {
+                        positions[i] += Math.sin(time * 0.2 + i) * 0.05;
+                    }
+
+                    if (positions[i+1] < -10) positions[i+1] = 100;
+                }
+                p.geometry.attributes.position.needsUpdate = true;
+            });
+
+            objects.forEach(obj => {
+                const d = obj.userData;
+                obj.rotateOnAxis(d.rotAxis, d.rotSpeed);
+                obj.position.y += Math.sin(time * d.floatFreq + d.floatOffset) * 0.01 * d.floatAmp;
+
+                if (d.isGlitching && Math.random() > 0.95) {
+                    obj.position.x += (Math.random() - 0.5) * 2;
+                    obj.position.z += (Math.random() - 0.5) * 2;
+                }
+            });
+
+            if (weatherData.type === 'Storm' || isCorrupted) {
+                stormTick++;
+                const trigger = isCorrupted ? 30 : 120;
+                if (stormTick % trigger === 0 && Math.random() > 0.6) {
+                    const flashColor = isCorrupted ? 0xff0000 : 0xffffff;
+                    renderer.setClearColor(flashColor, 1);
+                    setTimeout(() => renderer.setClearColor(0x000000, 0), 30);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        const ui = document.getElementById('ui');
+        const seedInput = document.getElementById('seedInput');
+        const randomizeBtn = document.getElementById('randomizeBtn');
+        const autoToggle = document.getElementById('autoToggle');
+        const intervalInput = document.getElementById('intervalInput');
+        const progressContainer = document.getElementById('warp-progress-container');
+        const maintenanceScreen = document.getElementById('maintenance-screen');
+        
+        // Maintenance Specific UI Elements
+        const maintSeedInput = document.getElementById('maintSeedInput');
+        const maintIntervalInput = document.getElementById('maintIntervalInput');
+        const maintRandomBtn = document.getElementById('maintRandomBtn');
+
+        function toggleUi() {
+            ui.classList.toggle('hidden');
+        }
+
+        function toggleMaintenance() {
+            isMaintenance = !isMaintenance;
+            if (isMaintenance) {
+                maintenanceScreen.classList.add('active');
+            } else {
+                maintenanceScreen.classList.remove('active');
+                warpStartTime = Date.now(); 
+            }
+        }
+
+        // Helper to sync and trigger update
+        function handleSeedChange(newVal) {
+            seedInput.value = newVal;
+            maintSeedInput.value = newVal;
+            generateWorld(newVal);
+        }
+
+        function handleIntervalChange(newVal) {
+            intervalInput.value = newVal;
+            maintIntervalInput.value = newVal;
+            if (autoToggle.checked) restartAutoWarp();
+        }
+
+        function triggerRandomize() {
+            const newSeed = Math.random().toString(36).substring(7).toUpperCase();
+            handleSeedChange(newSeed);
+        }
+
+        function restartAutoWarp() {
+            if (autoInterval) clearInterval(autoInterval);
+            if (autoToggle.checked) {
+                progressContainer.classList.add('visible');
+                autoInterval = setInterval(() => {
+                    if (!isMaintenance) triggerRandomize();
+                    else {
+                        // If in maintenance, we still update the "underlying" world but visually stay black
+                        triggerRandomize();
+                    }
+                }, Math.max(0.5, intervalInput.value) * 1000);
+            }
+        }
+
+        // Standard UI Listeners
+        seedInput.addEventListener('input', (e) => handleSeedChange(e.target.value));
+        randomizeBtn.addEventListener('click', triggerRandomize);
+        intervalInput.addEventListener('change', (e) => handleIntervalChange(e.target.value));
+        
+        // Maintenance UI Listeners
+        maintSeedInput.addEventListener('input', (e) => handleSeedChange(e.target.value));
+        maintIntervalInput.addEventListener('change', (e) => handleIntervalChange(e.target.value));
+        maintRandomBtn.addEventListener('click', triggerRandomize);
+
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement === seedInput || document.activeElement === maintSeedInput) return;
+            
+            const key = e.key.toLowerCase();
+            if (key === 'h') toggleUi();
+            if (key === 'e') toggleMaintenance();
+        });
+
+        autoToggle.addEventListener('change', () => {
+            if (autoToggle.checked) {
+                restartAutoWarp();
+            } else {
+                if (autoInterval) clearInterval(autoInterval);
+                progressContainer.classList.remove('visible');
+            }
+        });
+
+        window.onload = init;
+    </script>
+</body>
+</html>
