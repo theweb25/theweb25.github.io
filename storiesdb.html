@@ -3,62 +3,656 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Story Database</title>
+    <title>storiedb</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100;300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .pagination { display: flex; justify-content: center; margin: 20px 0; }
-        .pagination button { margin: 0 5px; padding: 10px 20px; }
-    </style>
-</head>
-<body>
-    <h1>Story Database</h1>
-    <div id="stories">
-        <!-- Stories will be populated here -->
-    </div>
-    <div class="pagination">
-        <button id="prev">Previous</button>
-        <span id="page-info">Page 1</span>
-        <button id="next">Next</button>
-    </div>
-    <script>
-        const stories = [
-            {/* Example stories data */}
-            {"title": "Story 1", "hashtag": "#adventure"},
-            {"title": "Story 2", "hashtag": "#mystery"},
-            {"title": "Story 3", "hashtag": "#adventure"},
-            {"title": "Story 4", "hashtag": "#fantasy"},
-            {"title": "Story 5", "hashtag": "#mystery"}
-        ];
-
-        let currentPage = 1;
-        const storiesPerPage = 2;
-        const totalPages = Math.ceil(stories.length / storiesPerPage);
-
-        function displayStories() {
-            const startIndex = (currentPage - 1) * storiesPerPage;
-            const endIndex = startIndex + storiesPerPage;
-            const storiesToDisplay = stories.slice(startIndex, endIndex);
-
-            const storiesDiv = document.getElementById('stories');
-            storiesDiv.innerHTML = storiesToDisplay.map(story => `<h2>${story.title}</h2><p>${story.hashtag}</p>`).join('');
-            document.getElementById('page-info').textContent = `Page ${currentPage}`;
+        :root {
+            --accent: #ff4d00;
+            --accent-glow: rgba(255, 77, 0, 0.4);
+            --bg: #050505;
+            --card-bg: rgba(0, 0, 0, 0.4);
+            --text: #ffffff;
+            --border: rgba(255, 255, 255, 0.1);
+            --overlay-bg: rgba(5, 5, 5, 0.85);
         }
 
-        document.getElementById('prev').addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                displayStories();
-            }
-        });
+        [data-theme="light"] {
+            --bg: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.6);
+            --text: #1d1d1f;
+            --border: rgba(0, 0, 0, 0.1);
+            --overlay-bg: rgba(245, 245, 247, 0.9);
+        }
 
-        document.getElementById('next').addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                displayStories();
-            }
-        });
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding-top: 90px;
+            min-height: 100vh;
+            transition: color 0.3s ease;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
 
-        displayStories();
+        /* Dynamic Wallpaper Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
+            z-index: -1;
+        }
+
+        [data-theme="light"] body::before {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.8));
+        }
+
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border);
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 70px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+
+        .logo-img {
+            height: 32px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 12px 8px 36px;
+            font-size: 14px;
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .preview-card {
+            border-radius: 24px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .tag {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-right: 6px;
+            color: white;
+        }
+
+        .tag-video { background: #ef4444; }
+        .tag-videoe { background: var(--accent); }
+        .tag-text { background: #3b82f6; }
+
+        #story-overlay, #settings-overlay, #onboarding-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: var(--overlay-bg);
+            backdrop-filter: blur(30px);
+            display: none;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .description {
+            margin-top: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            opacity: 0.9;
+            border-left: 4px solid var(--accent);
+            padding-left: 1.5rem;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text);
+        }
+
+        .action-btn:hover:not(:disabled) {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            box-shadow: 0 0 15px var(--accent-glow);
+            transition: transform 0.3s ease;
+        }
+
+        .close-btn:hover { transform: rotate(90deg) scale(1.1); }
+
+        input:not(.search-input), select {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .settings-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+        }
+
+        .page-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 3rem;
+            padding-bottom: 2rem;
+        }
+
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .page-dot.active {
+            background: var(--accent);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        /* Onboarding styles */
+        .onboarding-card {
+            max-width: 500px;
+            margin: 15vh auto;
+            text-align: center;
+        }
+        .onboarding-step { display: none; }
+        .onboarding-step.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 640px) {
+            .logo-img { display: none; }
+            .search-container { max-width: none; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <nav class="top-bar glass">
+        <div class="flex items-center cursor-pointer shrink-0" onclick="location.reload()">
+            <img src="https://son0ra.github.io/S%20(1).png" alt="logo" class="logo-img">
+        </div>
+
+        <div class="search-container">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="search-bar" class="search-input" placeholder="Search archive..." oninput="filterStories()">
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+            <button class="action-btn p-3 rounded-full" onclick="toggleSettings()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-6 pb-20" id="archive-grid"></main>
+
+    <!-- Overlay: Onboarding -->
+    <div id="onboarding-overlay">
+        <div class="onboarding-card glass p-10 rounded-[32px]">
+            <div id="step-1" class="onboarding-step active">
+                <img src="https://son0ra.github.io/S%20(1).png" class="h-12 mx-auto mb-6">
+                <h2 class="text-3xl font-extrabold mb-4 tracking-tighter">Welcome to storiedb</h2>
+                <p class="opacity-70 mb-8 leading-relaxed">welcome to storiedb, you can read a bunch of finished stories here.</p>
+                <button class="action-btn w-full py-4 text-sm" onclick="nextStep(2)">Get Started</button>
+            </div>
+            <div id="step-2" class="onboarding-step">
+                <div class="text-5xl mb-6">🖼️</div>
+                <h2 class="text-3xl font-extrabold mb-4 tracking-tighter">Dynamic Backdrops</h2>
+                <p class="opacity-70 mb-8 leading-relaxed">we have sleek, simple ui, and a BEAUTIFUL wallpaper every visit.</p>
+                <button class="action-btn w-full py-4 text-sm" onclick="nextStep(3)">Next</button>
+            </div>
+            <div id="step-3" class="onboarding-step">
+                <div class="text-5xl mb-6">📖</div>
+                <h2 class="text-3xl font-extrabold mb-4 tracking-tighter">Explore & Navigate</h2>
+                <p class="opacity-70 mb-8 leading-relaxed">tap any card to open a story. if a story has multiple parts, use the dots at the bottom to flip through pages.</p>
+                <button class="action-btn w-full py-4 text-sm" onclick="nextStep(4)">Next</button>
+            </div>
+            <div id="step-4" class="onboarding-step">
+                <div class="text-5xl mb-6">⚙️</div>
+                <h2 class="text-3xl font-extrabold mb-4 tracking-tighter">Customization</h2>
+                <p class="opacity-70 mb-8 leading-relaxed">use that gear icon at the top right to change database settings, toggle light/dark mode, or pick a manual accent color. goodbye, happy reading! (that is prolly corny ash)</p>
+                <button class="action-btn w-full py-4 text-sm" onclick="finishOnboarding()">Finish Tour</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay: Full Story View -->
+    <div id="story-overlay">
+        <div class="close-btn" onclick="closeStory()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></div>
+        <div class="max-w-4xl mx-auto mt-20" id="full-story-content"></div>
+        <div class="max-w-4xl mx-auto" id="story-navigation"></div>
+    </div>
+
+    <!-- Overlay: Settings -->
+    <div id="settings-overlay">
+        <div class="close-btn" onclick="toggleSettings()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="max-w-2xl mx-auto mt-12 pb-20">
+            <h1 class="text-4xl font-extrabold mb-8 tracking-tighter">Settings</h1>
+            <div class="settings-section">
+                <label class="text-[10px] font-black uppercase opacity-40">Theme</label>
+                <select id="theme-select" onchange="updateThemeSettings()"><option value="dark">Dark</option><option value="light">Light</option><option value="auto">Auto (Day/Night)</option></select>
+            </div>
+            <div class="settings-section">
+                <label class="text-[10px] font-black uppercase opacity-40">Accent Mode</label>
+                <select id="accent-mode-select" onchange="updateAccentMode()">
+                    <option value="manual">Manual Selection</option>
+                    <option value="adaptive">Adaptive (Wallpaper Sync)</option>
+                </select>
+                <div id="manual-accent-controls" class="flex gap-4 mt-2">
+                    <input type="color" id="accent-picker" class="w-16 h-12 p-0 cursor-pointer" onchange="updateAccent()">
+                    <input type="text" id="accent-hex" class="flex-1" oninput="updateAccentFromHex()">
+                </div>
+            </div>
+            <div class="settings-section">
+                <label class="text-[10px] font-black uppercase opacity-40">Wallpaper</label>
+                <button class="action-btn w-full mt-2" onclick="fetchWallpaper()">Refresh Bing Backdrop</button>
+            </div>
+            <div class="settings-section">
+                <label class="text-[10px] font-black uppercase opacity-40">Database URL</label>
+                <input type="text" id="db-url-input" onchange="updateDbUrl()">
+                <button class="action-btn mt-4 w-full" onclick="location.reload()">Refresh Data</button>
+            </div>
+            <button class="action-btn w-full border-red-500/30 text-red-500" onclick="resetSettings()">Reset App</button>
+        </div>
+    </div>
+
+    <canvas id="color-thief" style="display:none;"></canvas>
+
+    <script>
+        let DB_URL = localStorage.getItem('sdb_url') || 'https://son0ra.github.io/storiedb.txt';
+        let allStories = [];
+        let filteredStories = [];
+        let currentStoryIndex = -1;
+        let currentPageIndex = 0;
+        let wallpaperImg = new Image();
+
+        // --- Core ---
+        window.onload = () => {
+            applyStoredSettings();
+            fetchWallpaper();
+            loadVault();
+            checkOnboarding();
+        };
+
+        function checkOnboarding() {
+            if (!localStorage.getItem('sdb_onboarded')) {
+                document.getElementById('onboarding-overlay').style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function nextStep(stepNum) {
+            document.querySelectorAll('.onboarding-step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step-${stepNum}`).classList.add('active');
+        }
+
+        function finishOnboarding() {
+            localStorage.setItem('sdb_onboarded', 'true');
+            document.getElementById('onboarding-overlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function fetchWallpaper() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/son0ra/bing-wallpaper/main/today.json');
+                const data = await response.json();
+                const wallpaperUrl = `https://www.bing.com${data.images[0].url}`;
+                
+                wallpaperImg.crossOrigin = "Anonymous";
+                wallpaperImg.src = wallpaperUrl;
+                wallpaperImg.onload = () => {
+                    document.body.style.backgroundImage = `url('${wallpaperUrl}')`;
+                    if (localStorage.getItem('sdb_accent_mode') === 'adaptive') {
+                        extractColor();
+                    }
+                };
+            } catch (err) {
+                const fallback = 'https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN';
+                wallpaperImg.crossOrigin = "Anonymous";
+                wallpaperImg.src = fallback;
+                wallpaperImg.onload = () => {
+                    document.body.style.backgroundImage = `url('${fallback}')`;
+                    if (localStorage.getItem('sdb_accent_mode') === 'adaptive') {
+                        extractColor();
+                    }
+                };
+            }
+        }
+
+        function extractColor() {
+            const canvas = document.getElementById('color-thief');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 100;
+            canvas.height = 100;
+            ctx.drawImage(wallpaperImg, 0, 0, 100, 100);
+            const data = ctx.getImageData(0, 0, 100, 100).data;
+            
+            let r = 0, g = 0, b = 0, count = 0;
+            for (let i = 0; i < data.length; i += 20) {
+                const red = data[i], green = data[i+1], blue = data[i+2];
+                const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+                if (brightness > 40 && brightness < 200) {
+                    r += red; g += green; b += blue; count++;
+                }
+            }
+            
+            if (count === 0) return;
+            const avgR = Math.round(r / count), avgG = Math.round(g / count), avgB = Math.round(b / count);
+            const hex = "#" + ((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1);
+            applyAccent(hex, false);
+        }
+
+        async function loadVault() {
+            try {
+                const response = await fetch(DB_URL);
+                const text = await response.text();
+                parseData(text);
+            } catch (err) {
+                document.getElementById('archive-grid').innerHTML = `<p class="col-span-full text-center opacity-40 py-20">Database error.</p>`;
+            }
+        }
+
+        function parseData(text) {
+            const sections = text.split(/(?:\n|^)-+\s*(?:\n|$)/).filter(s => s.trim());
+            allStories = sections.map(section => {
+                const pageBlocks = section.split(/(?:\n|^)#+\s*(?:\n|$)/).filter(p => p.trim());
+                const pages = pageBlocks.map(block => {
+                    const lines = block.split('\n').filter(l => l.trim());
+                    const page = { title: null, items: [] };
+                    lines.forEach(line => {
+                        const splitPos = line.indexOf(':');
+                        if (splitPos === -1) return;
+                        const key = line.substring(0, splitPos).trim().toLowerCase();
+                        const val = line.substring(splitPos + 1).trim();
+                        if (key === 'title') page.title = val;
+                        else page.items.push({ type: key, val: val });
+                    });
+                    return page;
+                });
+                return { title: pages[0].title || 'Untitled', pages: pages };
+            });
+            filteredStories = [...allStories];
+            renderGrid();
+        }
+
+        function filterStories() {
+            const query = document.getElementById('search-bar').value.toLowerCase();
+            filteredStories = allStories.filter(story => {
+                const inTitle = story.title.toLowerCase().includes(query);
+                const inContent = story.pages.some(p => 
+                    p.items.some(i => i.val.toLowerCase().includes(query))
+                );
+                return inTitle || inContent;
+            });
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('archive-grid');
+            if (filteredStories.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center opacity-40 py-20">No matches found.</p>`;
+                return;
+            }
+            grid.innerHTML = filteredStories.map((story, index) => {
+                const allItems = story.pages.flatMap(p => p.items);
+                const types = [...new Set(allItems.map(i => i.type))];
+                return `
+                    <div class="preview-card glass" onclick="openStory(${index})">
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${types.map(t => `<span class="tag tag-${t}">${t.includes('video') ? 'Video' : 'txt'}</span>`).join('')}
+                        </div>
+                        <h2 class="text-xl font-bold tracking-tight mb-2">${story.title}</h2>
+                        <p class="opacity-40 text-[9px] uppercase tracking-widest font-black">
+                            ${story.pages.length > 1 ? `${story.pages.length} PAGES` : 'ENTRY'}
+                        </p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- Overlays ---
+        function toggleSettings() {
+            const el = document.getElementById('settings-overlay');
+            const isOpen = el.style.display === 'block';
+            el.style.display = isOpen ? 'none' : 'block';
+            document.body.style.overflow = isOpen ? 'auto' : 'hidden';
+        }
+
+        function openStory(index) {
+            // Map filtered index back to original stories array
+            const story = filteredStories[index];
+            currentStoryIndex = allStories.indexOf(story);
+            currentPageIndex = 0;
+            renderPage();
+            document.getElementById('story-overlay').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeStory() {
+            document.getElementById('story-overlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            document.getElementById('full-story-content').innerHTML = '';
+        }
+
+        function renderPage() {
+            const story = allStories[currentStoryIndex];
+            if (!story) return;
+            const page = story.pages[currentPageIndex];
+            const content = document.getElementById('full-story-content');
+            const nav = document.getElementById('story-navigation');
+            
+            const hasVideo = page.items.some(i => i.type.includes('video'));
+            const textLines = page.items.filter(i => i.type === 'text').map(i => i.val).join('<br><br>');
+
+            let html = `<h1 class="text-4xl font-extrabold mb-8 tracking-tighter">${page.title || story.title}</h1>`;
+            
+            page.items.forEach(item => {
+                if (item.type === 'video') {
+                    html += `<div class="video-container mb-6"><video controls class="w-full h-full"><source src="${item.val}" type="video/mp4"></video></div>`;
+                } else if (item.type === 'videoe') {
+                    const isYoutube = item.val.includes('youtube.com') || item.val.includes('youtu.be');
+                    const url = isYoutube ? item.val.replace('watch?v=', 'embed/') : item.val;
+                    html += `<div class="video-container mb-6"><iframe src="${url}" class="w-full h-full" frameborder="0" allowfullscreen></iframe></div>`;
+                }
+            });
+
+            if (textLines) {
+                html += `<div class="${hasVideo ? 'description' : 'text-xl font-light leading-relaxed opacity-90'}">${textLines}</div>`;
+            }
+
+            content.innerHTML = html;
+
+            if (story.pages.length > 1) {
+                nav.innerHTML = `
+                    <div class="page-indicator">
+                        <button class="action-btn" ${currentPageIndex === 0 ? 'disabled' : ''} onclick="changePage(-1)">PREV</button>
+                        <div class="flex gap-2">
+                            ${story.pages.map((_, i) => `<div class="page-dot ${i === currentPageIndex ? 'active' : ''}"></div>`).join('')}
+                        </div>
+                        <button class="action-btn" ${currentPageIndex === story.pages.length - 1 ? 'disabled' : ''} onclick="changePage(1)">NEXT</button>
+                    </div>
+                `;
+            } else nav.innerHTML = '';
+            
+            document.getElementById('story-overlay').scrollTop = 0;
+        }
+
+        function changePage(dir) {
+            currentPageIndex += dir;
+            renderPage();
+        }
+
+        // --- Settings Logic ---
+        function applyStoredSettings() {
+            const theme = localStorage.getItem('sdb_theme') || 'dark';
+            document.getElementById('theme-select').value = theme;
+            handleTheme(theme);
+
+            const mode = localStorage.getItem('sdb_accent_mode') || 'manual';
+            document.getElementById('accent-mode-select').value = mode;
+            updateAccentMode();
+
+            const accent = localStorage.getItem('sdb_accent') || '#ff4d00';
+            if (mode === 'manual') applyAccent(accent, true);
+            
+            document.getElementById('db-url-input').value = DB_URL;
+        }
+
+        function handleTheme(theme) {
+            if (theme === 'auto') theme = (new Date().getHours() >= 6 && new Date().getHours() < 18) ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', theme);
+        }
+
+        function updateThemeSettings() {
+            const val = document.getElementById('theme-select').value;
+            localStorage.setItem('sdb_theme', val);
+            handleTheme(val);
+        }
+
+        function updateAccentMode() {
+            const mode = document.getElementById('accent-mode-select').value;
+            localStorage.setItem('sdb_accent_mode', mode);
+            const controls = document.getElementById('manual-accent-controls');
+            
+            if (mode === 'adaptive') {
+                controls.style.opacity = '0.3';
+                controls.style.pointerEvents = 'none';
+                extractColor();
+            } else {
+                controls.style.opacity = '1';
+                controls.style.pointerEvents = 'auto';
+                applyAccent(localStorage.getItem('sdb_accent') || '#ff4d00', true);
+            }
+        }
+
+        function updateAccent() { applyAccent(document.getElementById('accent-picker').value, true); }
+        function updateAccentFromHex() { 
+            const val = document.getElementById('accent-hex').value;
+            if (/^#[0-9A-F]{6}$/i.test(val)) applyAccent(val, true);
+        }
+        
+        function applyAccent(val, saveToStorage) {
+            if (saveToStorage) localStorage.setItem('sdb_accent', val);
+            document.documentElement.style.setProperty('--accent', val);
+            document.documentElement.style.setProperty('--accent-glow', val + '66');
+            document.getElementById('accent-picker').value = val;
+            document.getElementById('accent-hex').value = val;
+        }
+
+        function updateDbUrl() {
+            const val = document.getElementById('db-url-input').value.trim();
+            if (val) { localStorage.setItem('sdb_url', val); DB_URL = val; }
+        }
+
+        function resetSettings() { localStorage.clear(); location.reload(); }
     </script>
 </body>
 </html>
+
