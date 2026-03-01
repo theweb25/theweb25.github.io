@@ -1,6 +1,6 @@
 //video = direct video link, videoe= external video link, text = text based story. < READ THISSSSSSSSSSSS!!!!!!!!!!!!!!!
 title:new update (read this!!)
-text:we completely revamped the app! enjoy the new look!
+text:we completely revamped the app! enjoy the new look! also, there may be some new bugs. report them on github issues.
 -
 title:honorable mention to people who provide full stories!!
 text:you people are the best people to EVER touch tiktok. please show them some love!!
