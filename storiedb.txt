@@ -6,7 +6,8 @@ title:honorable mention to people who provide full stories!!
 text:you people are the best people to EVER touch tiktok. please show them some love!!
 -
 title:page testing
-text:page 1 # page 2 # page 3 # page 4 # page 5
+text:debugging
+video:
 -
 title:whats a little white lie you've told your partner to keep them happy?
 video:https://ucbeb86aad4e7edfb5234ee216f2.dl.dropboxusercontent.com/cd/0/inline/C4oAGLeewVgT_n21pTJx73riyat2Lg9yYx8ggv5Z6bUb38HwMdeI03EC_W3Iq0O2vmJXRLXdeejP17eaf1dLH2g2EGZhV88E0RYpwfRcHCWbTzne1iocE_SjaLIZWbYX030tIisvXGrzzGzOnO48wNyA/file
@@ -32,3 +33,4 @@ video:https://www.dropbox.com/scl/fi/sceyj56h9htg86yza8c55/teacherhearingaid.mp4
 title:my mom lied and told everybody i died at birth, but she was hiding me in her basement.
 
 videoe:https://www.youtube.com/embed/eKqeew0Dnrk
+
