@@ -5,7 +5,7 @@ text:we completely revamped the app! enjoy the new look! also, there may be some
 title:honorable mention to people who provide full stories!!
 text:you people are the best people to EVER touch tiktok. please show them some love!!
 -
-title:page testing
+title:debugging
 text:debugging
 video:https://raw.githubusercontent.com/son0ra/son0ra.github.io/refs/heads/main/sonora-icon-gradient.png
 -
@@ -33,5 +33,6 @@ video:https://www.dropbox.com/scl/fi/sceyj56h9htg86yza8c55/teacherhearingaid.mp4
 title:my mom lied and told everybody i died at birth, but she was hiding me in her basement.
 
 videoe:https://www.youtube.com/embed/eKqeew0Dnrk
+
 
 
