@@ -2,317 +2,313 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Chat System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lotus Sync Extreme</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s;
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-        }
-        .chat-container {
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            box-shadow: none; /* Removed box-shadow for full screen */
-            overflow: hidden;
-            transition: background-color 0.3s, box-shadow 0.3s;
-        }
-        .chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: #d1d5db #f3f4f6;
-        }
-        .chat-messages::-webkit-scrollbar {
-            width: 8px;
-        }
-        .chat-messages::-webkit-scrollbar-track {
-            background: #f3f4f6;
-        }
-        .chat-messages::-webkit-scrollbar-thumb {
-            background-color: #d1d5db;
-            border-radius: 20px;
-            border: 3px solid #f3f4f6;
-        }
-        .message {
-            max-width: 80%;
-            border-radius: 1.5rem;
-            padding: 0.75rem 1.25rem;
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .message.self {
-            background-color: #3b82f6;
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 0.5rem;
-        }
-        .message.other {
-            background-color: #e5e7eb;
-            color: #1f2937;
-            align-self: flex-start;
-            border-bottom-left-radius: 0.5rem;
-        }
-        .online-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: #ef4444; /* red */
-        }
-        .online-indicator.online {
-            background-color: #22c55e; /* green */
-        }
-
-        /* Dark Mode Styles */
-        body.dark {
-            background-color: #1a1a1a;
-        }
-        body.dark .chat-container {
-            background-color: #2c2c2c;
-        }
-        body.dark .bg-gray-800 {
-            background-color: #1f2937;
-        }
-        body.dark .bg-gray-200 {
-            background-color: #3f3f3f;
-        }
-        body.dark .text-white {
-            color: #d1d5db;
-        }
-        body.dark .message.other {
-            background-color: #4b5563;
-            color: #d1d5db;
-        }
-        body.dark input, body.dark button {
-            background-color: #4b5563;
-            color: #d1d5db;
-            border: none;
-        }
-        body.dark input::placeholder {
-            color: #9ca3af;
-        }
-        body.dark button.bg-blue-500 {
-            background-color: #60a5fa;
-        }
-        body.dark button.bg-blue-500:hover {
-            background-color: #3b82f6;
-        }
-        body.dark .chat-messages::-webkit-scrollbar-track {
-            background: #2c2c2c;
-        }
-        body.dark .chat-messages::-webkit-scrollbar-thumb {
-            background-color: #6b7280;
-            border: 3px solid #2c2c2c;
-        }
-        .theme-toggle-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-            font-size: 1.5rem;
-            color: #fff;
-            line-height: 1;
-        }
-        .user-id {
-            font-size: 0.75rem;
-            color: #9ca3af;
-        }
+        :root { --glow: #3b82f6; }
+        body { background: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .neo-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
+        .neo-btn:active { transform: scale(0.96); }
+        .status-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        canvas { display: none; }
+        input[type="range"] { -webkit-appearance: none; background: #1e293b; height: 6px; border-radius: 5px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #3b82f6; cursor: pointer; border: 2px solid #fff; }
     </style>
 </head>
-<body class="bg-gray-100">
-
-<div id="chatApp" class="chat-container bg-white">
-    <!-- Header -->
-    <div class="bg-gray-800 p-4 text-white flex items-center justify-between">
-        <h1 class="text-xl font-bold">Chat System</h1>
-        <div class="flex flex-col items-end space-y-1">
-            <div class="flex items-center space-x-2">
-                <span id="statusText" class="text-sm font-medium">Connecting...</span>
-                <div id="statusIndicator" class="online-indicator"></div>
-                <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle dark and light mode">
-                    <span id="theme-icon">☀️</span>
-                </button>
+<body class="p-4 sm:p-6 lg:p-10">
+    <div class="max-w-4xl mx-auto space-y-6">
+        
+        <!-- Top Status Bar -->
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 glass p-4 rounded-3xl">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-500/20 rounded-xl">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight italic">LOTUS<span class="text-blue-500">SYNC</span></h1>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Aggressive BLE Scanner v2.0</p>
+                </div>
             </div>
-            <span id="userIdDisplay" class="user-id"></span>
+            
+            <button id="scanBtn" class="neo-btn w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-2xl font-bold flex items-center justify-center gap-2">
+                <span id="connIndicator" class="w-2 h-2 bg-red-500 rounded-full status-pulse"></span>
+                <span id="btnText">Find Everything</span>
+            </button>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left: Video Area -->
+            <div class="lg:col-span-8 space-y-4">
+                <div class="glass rounded-[2rem] overflow-hidden relative aspect-video bg-black shadow-2xl">
+                    <video id="v" class="w-full h-full" playsinline preload="auto" crossorigin="anonymous"></video>
+                    
+                    <!-- File Overlay -->
+                    <div id="drop" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-10 p-6 text-center">
+                        <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                            <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        </div>
+                        <p class="text-sm font-bold text-slate-200">Drop Video or Click to Browse</p>
+                        <p class="text-[10px] text-slate-500 mt-1 uppercase font-bold">Compatible with MP4, MOV, WebM</p>
+                        <input type="file" id="fi" class="hidden" accept="video/*">
+                    </div>
+
+                    <!-- Custom Player Controls (Visible on Hover) -->
+                    <div id="controls" class="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 transition-opacity flex items-center gap-4 z-20">
+                        <button id="play" class="p-2 bg-white/10 rounded-lg hover:bg-white/20">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <div class="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                            <div id="prog" class="h-full bg-blue-500 w-0"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass p-5 rounded-3xl flex items-center gap-4">
+                        <div id="cp" class="w-14 h-14 rounded-2xl bg-slate-800 shadow-inner border border-white/5"></div>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-500 uppercase">Current Hex</p>
+                            <p id="hex" class="text-lg font-mono font-bold tracking-tighter">#000000</p>
+                        </div>
+                    </div>
+                    <div class="glass p-5 rounded-3xl flex flex-col justify-center gap-1">
+                        <div class="flex justify-between text-[10px] font-black text-slate-500 uppercase">
+                            <span>Change Rate</span>
+                            <span id="rateLabel">100ms</span>
+                        </div>
+                        <input type="range" id="rate" min="40" max="500" value="100" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Config & Logs -->
+            <div class="lg:col-span-4 space-y-4">
+                <div class="glass p-6 rounded-3xl space-y-5">
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                            <span>Brightness</span>
+                            <span id="bl">100%</span>
+                        </div>
+                        <input type="range" id="b" min="0" max="100" value="100" class="w-full accent-blue-500">
+                    </div>
+
+                    <div class="flex items-center justify-between p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10">
+                        <span class="text-xs font-bold text-slate-300">Auto Sync</span>
+                        <input type="checkbox" id="sync" checked class="w-5 h-5 accent-blue-500">
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="text-[10px] font-black text-slate-500 uppercase">Live Debug Log</p>
+                        <div id="log" class="h-48 overflow-y-auto font-mono text-[9px] text-slate-400 bg-black/40 p-3 rounded-xl border border-white/5">
+                            > [SYSTEM] Awaiting user scan...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass p-4 rounded-3xl">
+                    <h3 class="text-[10px] font-black text-blue-400 uppercase mb-2 italic">iPhone User Guide</h3>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">
+                        1. Open this app in <b>Bluefy Browser</b>.<br>
+                        2. Power-cycle your lights (off/on).<br>
+                        3. Grant Bluetooth permissions in Bluefy Settings.<br>
+                        4. Tap "Find Everything" and look for <b>ELK-BLEDOM</b>.
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Message Display Area -->
-    <div id="messages" class="chat-messages p-4 flex flex-col space-y-4">
-        <!-- Messages will be added here by JavaScript -->
-    </div>
+    <!-- Hidden Capture Engine -->
+    <canvas id="c" width="10" height="10"></canvas>
 
-    <!-- Message Input Area -->
-    <div class="bg-gray-200 p-4 flex space-x-2 items-center">
-        <input id="messageInput" type="text" placeholder="Type a message..." class="flex-grow rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-        <button id="sendBtn" class="bg-blue-500 text-white rounded-lg px-4 py-2 font-semibold hover:bg-blue-600 transition-colors">Send</button>
-    </div>
-</div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        if (Object.keys(firebaseConfig).length === 0) {
-            console.error('Firebase config is missing!');
-            document.getElementById('statusText').textContent = 'Error';
-            return;
-        }
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const userIdDisplay = document.getElementById('userIdDisplay');
-        const messagesContainer = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const themeToggleBtn = document.getElementById('themeToggleBtn');
-        const themeIcon = document.getElementById('theme-icon');
-
-        // Theme management logic
-        const applyTheme = (theme) => {
-            if (theme === 'dark') {
-                document.body.classList.add('dark');
-                themeIcon.textContent = '🌙';
-            } else {
-                document.body.classList.remove('dark');
-                themeIcon.textContent = '☀️';
-            }
+    <script>
+        // AGGRESSIVE SCAN CONFIG
+        const CONFIG = {
+            services: [
+                0xFFD0, // Standard LotusLantern
+                0xFFD5, // Extended Lotus
+                0xFFF0, // Generic RGB
+                0xFF01, // Generic Alternative
+                '0000ffd0-0000-1000-8000-00805f9b34fb',
+                '0000fff0-0000-1000-8000-00805f9b34fb'
+            ],
+            writeChar: 0xFFD5
         };
 
-        const currentTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const state = {
+            device: null,
+            char: null,
+            lastSent: 0,
+            avgColor: [0,0,0]
+        };
 
-        if (currentTheme) {
-            applyTheme(currentTheme);
-        } else if (prefersDark) {
-            applyTheme('dark');
-        } else {
-            applyTheme('light');
+        const dom = {
+            btn: document.getElementById('scanBtn'),
+            btnText: document.getElementById('btnText'),
+            indicator: document.getElementById('connIndicator'),
+            v: document.getElementById('v'),
+            fi: document.getElementById('fi'),
+            drop: document.getElementById('drop'),
+            log: document.getElementById('log'),
+            prog: document.getElementById('prog'),
+            hex: document.getElementById('hex'),
+            cp: document.getElementById('cp'),
+            brightness: document.getElementById('b'),
+            brightLabel: document.getElementById('bl'),
+            rate: document.getElementById('rate'),
+            rateLabel: document.getElementById('rateLabel'),
+            sync: document.getElementById('sync')
+        };
+
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        function addLog(msg, isError = false) {
+            const div = document.createElement('div');
+            div.className = isError ? 'text-red-400' : '';
+            div.textContent = `> [${new Date().toLocaleTimeString([], {hour12:false})}] ${msg}`;
+            dom.log.appendChild(div);
+            dom.log.scrollTop = dom.log.scrollHeight;
         }
 
-        themeToggleBtn.addEventListener('click', () => {
-            if (document.body.classList.contains('dark')) {
-                applyTheme('light');
-                localStorage.setItem('theme', 'light');
-            } else {
-                applyTheme('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-        });
-
-        // Firebase Auth State Listener
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                statusIndicator.classList.add('online');
-                statusText.textContent = 'Online';
-                userIdDisplay.textContent = `User ID: ${user.uid}`;
-                console.log('Signed in successfully with user ID:', user.uid);
-
-                // Set up real-time message listener
-                const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
-                const q = query(messagesRef);
-                onSnapshot(q, (snapshot) => {
-                    messagesContainer.innerHTML = '';
-                    const messages = [];
-                    snapshot.forEach(doc => {
-                        messages.push({ id: doc.id, ...doc.data() });
-                    });
-                    
-                    // Sort messages by timestamp
-                    messages.sort((a, b) => a.timestamp - b.timestamp);
-
-                    messages.forEach(msg => {
-                        const sender = msg.userId === user.uid ? 'self' : 'other';
-                        displayMessage(msg.text, sender);
-                    });
+        async function initBluetooth() {
+            try {
+                addLog("Requesting ALL devices...");
+                
+                // Aggressive mode: No name filters, show every signal
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: CONFIG.services
                 });
 
-            } else {
-                statusIndicator.classList.remove('online');
-                statusText.textContent = 'Offline';
-                userIdDisplay.textContent = 'User ID: N/A';
-                console.log('User is signed out.');
-            }
-        });
+                addLog(`Target picked: ${device.name || 'Unnamed'}`);
+                const server = await device.gatt.connect();
+                addLog("GATT Handshake complete.");
 
-        // Initial sign-in attempt
-        async function signIn() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
+                let foundService = null;
+                for (const uuid of CONFIG.services) {
+                    try {
+                        foundService = await server.getPrimaryService(uuid);
+                        if (foundService) {
+                            addLog(`Found Service: ${uuid}`);
+                            break;
+                        }
+                    } catch (e) { continue; }
                 }
-            } catch (error) {
-                console.error('Authentication Error:', error);
-                statusText.textContent = 'Auth Error';
+
+                if (!foundService) throw new Error("Compatible LED service not found.");
+
+                state.char = await foundService.getCharacteristic(CONFIG.writeChar);
+                state.device = device;
+
+                // UI Update
+                dom.indicator.classList.replace('bg-red-500', 'bg-emerald-400');
+                dom.btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+                dom.btnText.textContent = "Lights Synced";
+                addLog("Link established. Ready for video.");
+
+                device.addEventListener('gattserverdisconnected', () => {
+                    addLog("Connection lost.", true);
+                    location.reload();
+                });
+
+            } catch (err) {
+                addLog(`Connection Failed: ${err.message}`, true);
             }
         }
-        signIn();
 
-        // Function to display messages in the chat
-        function displayMessage(text, sender) {
-            const messageElement = document.createElement('div');
-            messageElement.textContent = text;
-            messageElement.classList.add('message', sender === 'self' ? 'self' : 'other');
-            messagesContainer.appendChild(messageElement);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        async function updateLights(r, g, b) {
+            if (!state.char || !dom.sync.checked) return;
+
+            const now = Date.now();
+            const delay = parseInt(dom.rate.value);
+            if (now - state.lastSent < delay) return;
+
+            const bMult = dom.brightness.value / 100;
+            // Lotus Command Frame
+            const cmd = new Uint8Array([
+                0x7e, 0x07, 0x05, 0x03, 
+                Math.round(r * bMult), 
+                Math.round(g * bMult), 
+                Math.round(b * bMult), 
+                0x10, 0xef
+            ]);
+
+            try {
+                await state.char.writeValue(cmd);
+                state.lastSent = now;
+            } catch (e) {}
         }
 
-        // Handle sending a message
-        async function sendMessage() {
-            const messageText = messageInput.value.trim();
-            if (messageText === '') return;
-
-            const user = auth.currentUser;
-            if (!user) {
-                displayMessage('You are not connected. Please try again.', 'system');
+        function processFrame() {
+            if (dom.v.paused || dom.v.ended) {
+                requestAnimationFrame(processFrame);
                 return;
             }
 
-            try {
-                const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
-                await addDoc(messagesRef, {
-                    userId: user.uid,
-                    text: messageText,
-                    timestamp: Date.now()
-                });
-                messageInput.value = '';
-            } catch (error) {
-                console.error('Error adding document:', error);
-                displayMessage('Failed to send message. Check the console for details.', 'system');
+            // Downsample frame to 10x10 to get average color
+            ctx.drawImage(dom.v, 0, 0, 10, 10);
+            const data = ctx.getImageData(0, 0, 10, 10).data;
+
+            let r = 0, g = 0, b = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                r += data[i]; g += data[i+1]; b += data[i+2];
             }
+
+            const count = data.length / 4;
+            const avgR = Math.round(r / count);
+            const avgG = Math.round(g / count);
+            const avgB = Math.round(b / count);
+
+            const hex = `#${((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1).toUpperCase()}`;
+            dom.hex.textContent = hex;
+            dom.cp.style.backgroundColor = hex;
+
+            updateLights(avgR, avgG, avgB);
+            
+            // Update progress bar
+            const p = (dom.v.currentTime / dom.v.duration) * 100;
+            dom.prog.style.width = `${p}%`;
+
+            requestAnimationFrame(processFrame);
         }
 
-        // Send message on button click
-        sendBtn.addEventListener('click', sendMessage);
+        // --- Interaction Handlers ---
 
-        // Send message on Enter key press
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        dom.btn.addEventListener('click', initBluetooth);
+
+        dom.drop.addEventListener('click', () => dom.fi.click());
+
+        dom.fi.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                dom.v.src = URL.createObjectURL(file);
+                dom.drop.classList.add('hidden');
+                addLog(`Loaded: ${file.name}`);
+                dom.v.play();
             }
         });
-    });
-</script>
 
+        document.getElementById('play').addEventListener('click', () => {
+            if (dom.v.paused) dom.v.play(); else dom.v.pause();
+        });
+
+        dom.brightness.addEventListener('input', (e) => {
+            dom.brightLabel.textContent = `${e.target.value}%`;
+        });
+
+        dom.rate.addEventListener('input', (e) => {
+            dom.rateLabel.textContent = `${e.target.value}ms`;
+        });
+
+        // Initialize engine
+        processFrame();
+    </script>
 </body>
 </html>
+
