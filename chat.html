@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lotus Sync Dashboard</title>
+    <title>Lotus Sync Universal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .btn-primary { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
         .btn-primary:active { transform: scale(0.96); opacity: 0.9; }
-        .device-item { animation: slideIn 0.3s ease-out forwards; }
+        .slideIn { animation: slideIn 0.4s ease-out forwards; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; }
     </style>
 </head>
 <body class="p-6 pb-20">
@@ -20,72 +19,47 @@
         
         <header class="flex justify-between items-center py-2">
             <div>
-                <h1 class="text-2xl font-black tracking-tighter italic">LOTUS<span class="text-blue-500">SYNC</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Universal Mode v3.4</p>
+                <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white">Lotus<span class="text-blue-500">Sync</span></h1>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Aggressive Detect v3.6</p>
             </div>
             <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
         </header>
 
-        <!-- Picker Troubleshooting -->
-        <div id="troubleshoot" class="p-4 rounded-3xl bg-blue-500/10 border border-blue-500/20 space-y-3">
-            <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-widest">No Popup Appearing?</h3>
-            <p class="text-[11px] text-slate-300 leading-tight">
-                Some browsers block the device list. 
-                1. Ensure you are using <b>Bluefy</b> (iOS) or <b>Chrome</b> (Desktop/Android).
-                2. Make sure you are on <b>HTTPS</b>.
-                3. Try <b>Manual Search</b> below if the main button fails.
-            </p>
-        </div>
-
-        <!-- Main Controller UI -->
-        <div class="glass rounded-[2.5rem] p-6 space-y-6">
+        <!-- Setup Panel -->
+        <div id="setup-panel" class="glass rounded-[2.5rem] p-6 space-y-6">
             <div class="flex justify-between items-center px-1">
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Connection Hub</span>
-                <span id="dev-status" class="text-[9px] font-bold text-blue-400 px-2 py-0.5 bg-blue-400/10 rounded-full">READY</span>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Device Connection</span>
+                <span id="dev-status" class="text-[9px] font-bold text-blue-400 px-2 py-0.5 bg-blue-400/10 rounded-full">WAITING</span>
             </div>
 
-            <div class="space-y-4">
-                <button id="scanBtn" class="btn-primary w-full py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all">
-                    Quick Connect (Auto)
-                </button>
-                
-                <div class="flex items-center gap-2">
-                    <div class="h-[1px] flex-1 bg-white/10"></div>
-                    <span class="text-[9px] font-bold text-slate-600 uppercase">OR</span>
-                    <div class="h-[1px] flex-1 bg-white/10"></div>
-                </div>
-
-                <div class="space-y-2">
-                    <input type="text" id="manualName" placeholder="Enter Device Name (e.g. ELK-BLEDOM)" class="w-full p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500/50 transition-all">
-                    <button id="manualBtn" class="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-                        Target Specific Device
-                    </button>
-                </div>
-            </div>
+            <button id="scanBtn" class="btn-primary w-full py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all">
+                Connect to LED
+            </button>
         </div>
 
-        <!-- Sync Control -->
+        <!-- Sync Control (Shown when connected) -->
         <div id="sync-ctrl" class="hidden glass rounded-[2.5rem] p-6 space-y-6 slideIn">
-            <div class="aspect-video bg-black rounded-3xl overflow-hidden relative border border-white/5">
+            <div class="aspect-video bg-black rounded-3xl overflow-hidden relative border border-white/5 shadow-2xl">
                 <video id="v" class="w-full h-full object-cover" playsinline crossorigin="anonymous"></video>
                 <div id="upload-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 cursor-pointer">
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Select Video</p>
+                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Tap to Load Movie</p>
                     <input type="file" id="fileIn" class="hidden" accept="video/*">
                 </div>
             </div>
             
-            <div class="flex items-center gap-6 bg-white/5 p-4 rounded-3xl">
-                <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-lg border border-white/10"></div>
+            <div class="flex items-center gap-6 bg-white/5 p-5 rounded-3xl border border-white/5">
+                <div id="color-prev" class="w-16 h-16 rounded-2xl shadow-lg border border-white/10 transition-colors duration-100"></div>
                 <div>
-                    <p id="hex-code" class="text-xl font-mono font-black tracking-tighter">#000000</p>
-                    <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">Syncing to LEDs</p>
+                    <p id="hex-code" class="text-2xl font-mono font-black tracking-tighter text-white">#000000</p>
+                    <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Sync Active</p>
                 </div>
             </div>
         </div>
 
+        <!-- Debug Log -->
         <div class="space-y-2">
             <p class="text-[10px] font-black text-slate-500 uppercase px-2">System Output</p>
-            <div id="log" class="text-[9px] font-mono text-slate-400 bg-black/40 p-4 rounded-2xl h-24 overflow-y-auto border border-white/5 whitespace-pre-wrap"></div>
+            <div id="log" class="text-[9px] font-mono text-slate-400 bg-black/40 p-4 rounded-2xl h-48 overflow-y-auto border border-white/5 whitespace-pre-wrap leading-relaxed"></div>
         </div>
     </div>
 
@@ -93,57 +67,61 @@
 
     <script>
         const state = { char: null, lastTime: 0 };
-        const logger = (m, isErr=false) => {
+        const logger = (m, type='info') => {
             const el = document.getElementById('log');
-            el.innerHTML += `<div class="${isErr?'text-red-400':''}">> ${m}</div>`;
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-400');
+            el.innerHTML += `<div class="${color}">> ${m}</div>`;
             el.scrollTop = el.scrollHeight;
         };
 
-        async function requestLED(options) {
-            logger("Requesting device access...");
-            try {
-                const device = await navigator.bluetooth.requestDevice(options);
-                logger(`Found: ${device.name || 'LED'}`, "success");
-                
-                const server = await device.gatt.connect();
-                let service;
-                try { service = await server.getPrimaryService(0xFFD0); } 
-                catch(e) { service = await server.getPrimaryService(0xFFF0); }
-                
-                state.char = await service.getCharacteristic(0xFFD5);
-                
-                logger("STABLE CONNECTION", "success");
-                document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
-                document.getElementById('sync-ctrl').classList.remove('hidden');
-                document.getElementById('dev-status').textContent = "CONNECTED";
-            } catch (e) {
-                logger("Error: " + e.message, true);
-                if (e.name === 'NotFoundError') {
-                    logger("The browser's Bluetooth popup didn't show or was closed.", true);
+        // Try to find ANY writeable characteristic
+        async function aggressiveFind(server) {
+            logger("Scanning all available services...");
+            const services = await server.getPrimaryServices();
+            
+            for (const service of services) {
+                logger(`Checking Service: ${service.uuid}`);
+                const chars = await service.getCharacteristics();
+                for (const char of chars) {
+                    logger(`- Found Char: ${char.uuid}`);
+                    // 0xFFD5 and 0xFFF3 are the most common write ports for these LEDs
+                    if (char.uuid.includes('ffd5') || char.uuid.includes('fff3')) {
+                        logger(`MATCH FOUND: ${char.uuid}`, "success");
+                        return char;
+                    }
                 }
             }
+            return null;
         }
 
-        // Auto Scan
-        document.getElementById('scanBtn').onclick = () => {
-            requestLED({
-                acceptAllDevices: true,
-                optionalServices: [0xFFD0, 0xFFF0, 0xFFD5]
-            });
+        document.getElementById('scanBtn').onclick = async () => {
+            logger("Requesting device access...");
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [0xFFD0, 0xFFF0, "0000ffd0-0000-1000-8000-00805f9b34fb", "0000fff0-0000-1000-8000-00805f9b34fb"]
+                });
+
+                logger(`Authorized: ${device.name}`, "success");
+                const server = await device.gatt.connect();
+                logger("GATT Server Connected.");
+                
+                state.char = await aggressiveFind(server);
+
+                if (state.char) {
+                    logger("SWITCHING UI...", "success");
+                    document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
+                    document.getElementById('setup-panel').style.display = 'none';
+                    document.getElementById('sync-ctrl').classList.remove('hidden');
+                } else {
+                    logger("Couldn't find the correct control characteristic.", "error");
+                }
+
+            } catch (e) {
+                logger("Error: " + e.message, "error");
+            }
         };
 
-        // Manual Search (Helps when popups are fussy)
-        document.getElementById('manualBtn').onclick = () => {
-            const name = document.getElementById('manualName').value.trim();
-            if (!name) return logger("Please enter a device name first.", true);
-            
-            requestLED({
-                filters: [{ namePrefix: name }],
-                optionalServices: [0xFFD0, 0xFFF0, 0xFFD5]
-            });
-        };
-
-        // Video Logic
         const v = document.getElementById('v');
         const overlay = document.getElementById('upload-overlay');
         const fileIn = document.getElementById('fileIn');
@@ -172,9 +150,10 @@
                 document.getElementById('hex-code').textContent = hex;
 
                 const now = Date.now();
-                if(now - state.lastTime > 150) { 
+                if(now - state.lastTime > 200) { 
                     try {
-                        await state.char.writeValue(new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]));
+                        const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]);
+                        await state.char.writeValue(packet);
                         state.lastTime = now;
                     } catch(e) {}
                 }
