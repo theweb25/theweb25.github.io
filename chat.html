@@ -33,10 +33,9 @@
             border: 1px solid rgba(255,255,255,0.1);
             color: white;
             border-radius: 8px;
-            padding: 4px 8px;
+            padding: 8px;
             font-family: monospace;
-            width: 60px;
-            text-align: center;
+            font-size: 11px;
         }
 
         .toggle-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; color: #64748b; }
@@ -49,7 +48,7 @@
         <header class="flex justify-between items-center py-2">
             <div>
                 <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white">Lotus<span class="text-blue-500">Sync</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Universal Mirror v6.0</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Universal Mirror v7.0</p>
             </div>
             <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
         </header>
@@ -63,34 +62,52 @@
         <div id="main-ui" class="hidden space-y-4">
             <!-- Source Selector -->
             <div class="flex gap-2 p-1 glass rounded-2xl">
-                <button id="src-video" class="toggle-btn active flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Local Video</button>
-                <button id="src-screen" class="toggle-btn flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Mirror Screen</button>
+                <button id="src-video" class="toggle-btn active flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.1em]">File</button>
+                <button id="src-yt" class="toggle-btn flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.1em]">YouTube</button>
+                <button id="src-screen" class="toggle-btn flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.1em]">Mirror</button>
             </div>
 
+            <!-- Video Player Area -->
             <div class="glass rounded-[2rem] p-3 relative">
                 <div id="video-wrapper" class="aspect-video bg-black rounded-[1.5rem] overflow-hidden relative border border-white/5">
-                    <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline autoplay muted crossorigin="anonymous"></video>
+                    <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline autoplay muted crossorigin="anonymous" controls></video>
                     <div id="target-dot"></div>
                 </div>
-                <div id="video-controls" class="mt-3 flex justify-center">
+
+                <!-- Source Inputs -->
+                <div id="file-controls" class="mt-3 flex justify-center">
                    <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400">Choose Video File</button>
                 </div>
+                
+                <div id="yt-controls" class="mt-3 hidden space-y-2">
+                    <div class="flex gap-2">
+                        <input type="text" id="yt-url" placeholder="Paste YouTube Link..." class="input-dark flex-1">
+                        <button id="load-yt" class="bg-blue-600 px-4 rounded-lg text-[10px] font-bold uppercase">Load</button>
+                    </div>
+                    <p class="text-[8px] text-center text-slate-500 italic">Uses open proxy to enable color sampling</p>
+                </div>
+
                 <input type="file" id="fileIn" class="hidden" accept="video/*">
             </div>
 
             <div class="flex gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 px-2">
                 <div class="glass flex-1 p-2 rounded-xl flex justify-between">
-                    <span>Performance</span>
+                    <span>Engine</span>
                     <span id="fps-val" class="text-emerald-400">0 FPS</span>
+                </div>
+                <div class="glass flex-1 p-2 rounded-xl flex justify-between items-center">
+                    <span>Background</span>
+                    <div id="bg-indicator" class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>
                 </div>
             </div>
 
+            <!-- Processing Settings -->
             <div class="glass rounded-[2rem] p-6 space-y-6">
                 <div class="flex justify-between items-center">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Processing Engine</h3>
                     <div class="flex items-center gap-2">
-                        <span class="text-[9px] text-slate-500 uppercase font-bold">Hz Limit:</span>
-                        <input type="number" id="fps-input" value="60" min="1" max="120" class="input-dark text-[10px]">
+                        <span class="text-[9px] text-slate-500 uppercase font-bold">Hz:</span>
+                        <input type="number" id="fps-input" value="60" min="1" max="120" class="input-dark w-12 !p-1 text-center">
                     </div>
                 </div>
 
@@ -105,7 +122,7 @@
 
                     <div class="space-y-3">
                         <div class="flex justify-between text-[10px] font-bold uppercase">
-                            <span>Smoothing</span>
+                            <span>Smoothing (Lag)</span>
                             <span id="smooth-val" class="text-blue-400">0.15</span>
                         </div>
                         <input type="range" id="smooth-slider" min="0.01" max="1.0" step="0.01" value="0.15" class="slider w-full">
@@ -113,14 +130,15 @@
 
                     <div class="space-y-3">
                         <div class="flex justify-between text-[10px] font-bold uppercase">
-                            <span>Brightness/Boost</span>
+                            <span>Brightness Boost</span>
                             <span id="boost-val" class="text-blue-400">1.0x</span>
                         </div>
-                        <input type="range" id="boost-slider" min="1" max="5" step="0.1" value="1" class="slider w-full">
+                        <input type="range" id="boost-slider" min="1" max="8" step="0.1" value="1" class="slider w-full">
                     </div>
                 </div>
             </div>
 
+            <!-- Preview Card -->
             <div class="glass rounded-[2rem] p-5 flex items-center gap-5 border-l-4 border-blue-500">
                 <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-xl border border-white/10"></div>
                 <div>
@@ -143,7 +161,8 @@
             currentRGB: { r: 0, g: 0, b: 0 },
             targetRGB: { r: 0, g: 0, b: 0 },
             smoothing: 0.15,
-            screenStream: null
+            screenStream: null,
+            loopId: null
         };
 
         const logger = (m, type='info') => {
@@ -153,6 +172,64 @@
         };
 
         function lerp(start, end, amt) { return start + (end - start) * amt; }
+
+        function startEngine() {
+            if (state.loopId) clearInterval(state.loopId);
+            state.loopId = setInterval(processFrame, 1000 / 60); 
+        }
+
+        // --- Source Logic ---
+        const v = document.getElementById('v');
+        const btnSrcVideo = document.getElementById('src-video');
+        const btnSrcYT = document.getElementById('src-yt');
+        const btnSrcScreen = document.getElementById('src-screen');
+        
+        const fileCtrl = document.getElementById('file-controls');
+        const ytCtrl = document.getElementById('yt-controls');
+
+        function hideAllSources() {
+            [fileCtrl, ytCtrl].forEach(el => el.classList.add('hidden'));
+            [btnSrcVideo, btnSrcYT, btnSrcScreen].forEach(b => b.classList.remove('active'));
+            if (state.screenStream) {
+                state.screenStream.getTracks().forEach(t => t.stop());
+                state.screenStream = null;
+            }
+            v.src = "";
+            v.srcObject = null;
+        }
+
+        btnSrcVideo.onclick = () => { hideAllSources(); btnSrcVideo.classList.add('active'); fileCtrl.classList.remove('hidden'); };
+        
+        btnSrcYT.onclick = () => { hideAllSources(); btnSrcYT.classList.add('active'); ytCtrl.classList.remove('hidden'); };
+
+        btnSrcScreen.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                hideAllSources();
+                state.screenStream = stream;
+                v.srcObject = stream;
+                btnSrcScreen.classList.add('active');
+                logger("Mirror active.");
+            } catch (err) { logger("Mirroring failed", "error"); }
+        };
+
+        document.getElementById('load-yt').onclick = () => {
+            const url = document.getElementById('yt-url').value;
+            let vidId = "";
+            if(url.includes('v=')) vidId = url.split('v=')[1].split('&')[0];
+            else if(url.includes('be/')) vidId = url.split('be/')[1].split('?')[0];
+
+            if(vidId) {
+                // Use a public invidious instance as a proxy to allow canvas sampling
+                const proxyUrl = `https://invidious.snopyta.org/latest_version?id=${vidId}&itag=22`;
+                v.src = proxyUrl;
+                v.load();
+                v.play().catch(e => logger("Proxy Load Failed: " + e.message, "error"));
+                logger(`Loading YT ID: ${vidId}`);
+            } else {
+                logger("Invalid YouTube URL", "error");
+            }
+        };
 
         // --- Controls ---
         document.getElementById('fps-input').onchange = (e) => state.targetFPS = Math.min(120, Math.max(1, parseInt(e.target.value) || 60));
@@ -169,36 +246,6 @@
         const btnAvg = document.getElementById('mode-avg');
         btnDot.onclick = () => { state.syncMode = 'dot'; btnDot.classList.add('active'); btnAvg.classList.remove('active'); document.getElementById('target-dot').classList.remove('hidden'); };
         btnAvg.onclick = () => { state.syncMode = 'average'; btnAvg.classList.add('active'); btnDot.classList.remove('active'); document.getElementById('target-dot').classList.add('hidden'); };
-
-        // --- Source Switching ---
-        const v = document.getElementById('v');
-        const btnSrcVideo = document.getElementById('src-video');
-        const btnSrcScreen = document.getElementById('src-screen');
-        const videoCtrl = document.getElementById('video-controls');
-
-        btnSrcVideo.onclick = () => {
-            if (state.screenStream) {
-                state.screenStream.getTracks().forEach(t => t.stop());
-                state.screenStream = null;
-            }
-            btnSrcVideo.classList.add('active');
-            btnSrcScreen.classList.remove('active');
-            videoCtrl.classList.remove('hidden');
-            v.srcObject = null;
-        };
-
-        btnSrcScreen.onclick = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                state.screenStream = stream;
-                v.srcObject = stream;
-                v.play();
-                btnSrcScreen.classList.add('active');
-                btnSrcVideo.classList.remove('active');
-                videoCtrl.classList.add('hidden');
-                logger("Screen mirroring active.");
-            } catch (err) { logger("Mirroring cancelled", "error"); }
-        };
 
         // --- Draggable ---
         const dot = document.getElementById('target-dot');
@@ -234,17 +281,16 @@
                     document.getElementById('setup-panel').classList.add('hidden');
                     document.getElementById('main-ui').classList.remove('hidden');
                     document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_#3b82f6]";
+                    startEngine();
                 }
             } catch (err) { logger(err.message, "error"); }
         };
 
-        const fileIn = document.getElementById('fileIn');
-        fileIn.onchange = (e) => { if(e.target.files[0]) { v.src = URL.createObjectURL(e.target.files[0]); v.play(); } };
+        document.getElementById('fileIn').onchange = (e) => { if(e.target.files[0]) { v.src = URL.createObjectURL(e.target.files[0]); v.play(); } };
 
         const ctx = document.getElementById('c').getContext('2d', { willReadFrequently: true });
         
         function processFrame() {
-            // Only process if video is ready (either local file or stream)
             if (v.readyState >= 2 && !v.paused && !v.ended) {
                 if (state.syncMode === 'dot') {
                     ctx.drawImage(v, 0, 0, 64, 64);
@@ -258,50 +304,37 @@
                     state.targetRGB = { r: tr/64, g: tg/64, b: tb/64 };
                 }
                 
-                // Color Smoothing
                 state.currentRGB.r = lerp(state.currentRGB.r, state.targetRGB.r, state.smoothing);
                 state.currentRGB.g = lerp(state.currentRGB.g, state.targetRGB.g, state.smoothing);
                 state.currentRGB.b = lerp(state.currentRGB.b, state.targetRGB.b, state.smoothing);
 
-                // Improved Boost (Actually affects brightness + saturation)
-                let r = state.currentRGB.r;
-                let g = state.currentRGB.g;
-                let b = state.currentRGB.b;
+                // Refined Luminance Boost
+                let r = state.currentRGB.r * state.boost;
+                let g = state.currentRGB.g * state.boost;
+                let b = state.currentRGB.b * state.boost;
 
-                // Scale up brightness while preserving color ratio
-                r = Math.min(255, r * state.boost);
-                g = Math.min(255, g * state.boost);
-                b = Math.min(255, b * state.boost);
-
-                const hex = "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1).toUpperCase();
-                document.getElementById('color-prev').style.backgroundColor = hex;
-                document.getElementById('hex-code').textContent = hex;
-
-                state.frameCount++;
-                const now = Date.now();
-                if (now - state.fpsLastTime >= 1000) {
-                    document.getElementById('fps-val').textContent = state.frameCount + " FPS";
-                    state.frameCount = 0;
-                    state.fpsLastTime = now;
+                const hex = "#" + ((1 << 24) + (Math.round(Math.min(255,r)) << 16) + (Math.round(Math.min(255,g)) << 8) + Math.round(Math.min(255,b))).toString(16).slice(1).toUpperCase();
+                
+                if (document.visibilityState === 'visible') {
+                    document.getElementById('color-prev').style.backgroundColor = hex;
+                    document.getElementById('hex-code').textContent = hex;
+                    state.frameCount++;
+                    const now = Date.now();
+                    if (now - state.fpsLastTime >= 1000) {
+                        document.getElementById('fps-val').textContent = state.frameCount + " FPS";
+                        state.frameCount = 0;
+                        state.fpsLastTime = now;
+                    }
                 }
 
+                const now = Date.now();
                 if (state.char && now - state.lastTime > (1000 / state.targetFPS)) {
-                    const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, Math.round(r), Math.round(g), Math.round(b), 0x10, 0xef]);
+                    const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, Math.round(Math.min(255,r)), Math.round(Math.min(255,g)), Math.round(Math.min(255,b)), 0x10, 0xef]);
                     state.char.writeValue(packet).catch(() => {});
                     state.lastTime = now;
                 }
             }
-            requestAnimationFrame(processFrame);
         }
-        processFrame();
-
-        // Key Shortcut
-        document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'f') {
-                if (!document.fullscreenElement) wrapper.requestFullscreen().catch(() => {});
-                else document.exitFullscreen();
-            }
-        });
     </script>
 </body>
 </html>
