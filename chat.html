@@ -14,35 +14,29 @@
         .slider::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; border: 2px solid white; }
         .hidden { display: none !important; }
         
-        /* Draggable Target Style */
         #target-dot {
-            width: 24px;
-            height: 24px;
+            width: 24px; height: 24px;
             background: rgba(239, 68, 68, 0.8);
             border: 3px solid white;
             border-radius: 50%;
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             cursor: move;
             z-index: 50;
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
             pointer-events: auto;
         }
-        #target-dot::after {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 100px; height: 1px; background: rgba(255,255,255,0.2);
-            transform: translate(-50%, -50%);
-        }
-        #target-dot::before {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            height: 100px; width: 1px; background: rgba(255,255,255,0.2);
-            transform: translate(-50%, -50%);
+
+        .input-dark {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-family: monospace;
+            width: 60px;
+            text-align: center;
         }
 
         .toggle-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
@@ -55,66 +49,62 @@
         <header class="flex justify-between items-center py-2">
             <div>
                 <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white">Lotus<span class="text-blue-500">Sync</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Precision Sync v4.2</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Ultra Smooth v5.0</p>
             </div>
-            <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10 shadow-[0_0_10px_rgba(0,0,0,0.5)]"></div>
+            <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
         </header>
 
-        <!-- Connection Panel -->
-        <div id="setup-panel" class="glass rounded-[2rem] p-6 space-y-4">
+        <div id="setup-panel" class="glass rounded-[2rem] p-6">
             <button id="scanBtn" class="btn-primary w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
                 Connect LED Hardware
             </button>
         </div>
 
-        <!-- Main Interface -->
         <div id="main-ui" class="hidden space-y-4">
-            
-            <!-- Video Player -->
             <div class="glass rounded-[2rem] p-3 relative">
                 <div id="video-wrapper" class="aspect-video bg-black rounded-[1.5rem] overflow-hidden relative border border-white/5">
                     <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline crossorigin="anonymous"></video>
-                    
-                    <!-- The Draggable Dot -->
                     <div id="target-dot"></div>
-
-                    <div id="change-hint" class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                        <span class="text-[8px] font-black uppercase text-white bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">Sync Active</span>
-                    </div>
                 </div>
                 <div class="mt-3 flex justify-center">
-                   <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400 transition-colors">Change Video File</button>
+                   <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400">Change Video</button>
                 </div>
                 <input type="file" id="fileIn" class="hidden" accept="video/*">
             </div>
 
-            <!-- Stats Bar -->
             <div class="flex gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 px-2">
-                <div class="glass flex-1 p-2 rounded-xl flex justify-between">
-                    <span>Signal</span>
-                    <span class="text-blue-400">Stable</span>
-                </div>
                 <div class="glass flex-1 p-2 rounded-xl flex justify-between">
                     <span>Performance</span>
                     <span id="fps-val" class="text-emerald-400">0 FPS</span>
                 </div>
             </div>
 
-            <!-- Settings Menu -->
             <div class="glass rounded-[2rem] p-6 space-y-6">
-                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Processing</h3>
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Engine Settings</h3>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] text-slate-500 uppercase font-bold">Hz Limit:</span>
+                        <input type="number" id="fps-input" value="60" min="1" max="120" class="input-dark text-[10px]">
+                    </div>
+                </div>
 
-                <div id="settings-content" class="space-y-6">
-                    <!-- Sync Mode Selection -->
+                <div class="space-y-6">
                     <div class="space-y-3">
                         <p class="text-[10px] font-bold uppercase text-slate-400">Sync Mode</p>
                         <div class="flex gap-2">
-                            <button id="mode-dot" class="toggle-btn active flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Target Dot</button>
-                            <button id="mode-avg" class="toggle-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Entire Screen</button>
+                            <button id="mode-dot" class="toggle-btn active flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Dot</button>
+                            <button id="mode-avg" class="toggle-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Average</button>
                         </div>
                     </div>
 
-                    <!-- Color Exaggeration -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-[10px] font-bold uppercase">
+                            <span>Smoothing (Ease)</span>
+                            <span id="smooth-val" class="text-blue-400">0.15</span>
+                        </div>
+                        <input type="range" id="smooth-slider" min="0.01" max="1.0" step="0.01" value="0.15" class="slider w-full">
+                    </div>
+
                     <div class="space-y-3">
                         <div class="flex justify-between text-[10px] font-bold uppercase">
                             <span>Color Boost</span>
@@ -122,197 +112,128 @@
                         </div>
                         <input type="range" id="boost-slider" min="1" max="4" step="0.1" value="1" class="slider w-full">
                     </div>
-
-                    <!-- Sync Speed / FPS Limit -->
-                    <div class="space-y-3">
-                        <div class="flex justify-between text-[10px] font-bold uppercase">
-                            <span>Refresh Rate</span>
-                            <span id="rate-val" class="text-blue-400">10 Hz</span>
-                        </div>
-                        <input type="range" id="rate-slider" min="5" max="30" step="1" value="10" class="slider w-full">
-                    </div>
                 </div>
             </div>
 
-            <!-- Preview Card -->
             <div class="glass rounded-[2rem] p-5 flex items-center gap-5 border-l-4 border-blue-500">
                 <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-xl border border-white/10"></div>
                 <div>
                     <p id="hex-code" class="text-xl font-mono font-black text-white">#000000</p>
-                    <p id="sample-mode-label" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Target Dot Output</p>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Smooth Output</p>
                 </div>
             </div>
         </div>
 
-        <!-- Log Area -->
-        <div class="space-y-2">
-            <div id="log" class="text-[8px] font-mono text-slate-500 bg-black/20 p-4 rounded-2xl h-20 overflow-y-auto border border-white/5 whitespace-pre-wrap"></div>
-        </div>
+        <div id="log" class="text-[8px] font-mono text-slate-500 bg-black/20 p-4 rounded-2xl h-20 overflow-y-auto border border-white/5 whitespace-pre-wrap"></div>
     </div>
 
-    <!-- Hidden Canvas for sampling -->
     <canvas id="c" width="64" height="64" class="hidden"></canvas>
 
     <script>
         const state = { 
-            char: null, 
-            lastTime: 0,
-            boost: 1.0,
-            targetFPS: 10,
-            frameCount: 0,
-            fpsLastTime: Date.now(),
-            targetX: 0.5, 
-            targetY: 0.5,
-            syncMode: 'dot' // 'dot' or 'average'
+            char: null, lastTime: 0, boost: 1.0, 
+            targetFPS: 60, frameCount: 0, fpsLastTime: Date.now(),
+            targetX: 0.5, targetY: 0.5, syncMode: 'dot',
+            currentRGB: { r: 0, g: 0, b: 0 },
+            targetRGB: { r: 0, g: 0, b: 0 },
+            smoothing: 0.15
         };
 
         const logger = (m, type='info') => {
             const el = document.getElementById('log');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-500');
-            el.innerHTML += `<div class="${color}">> ${m}</div>`;
+            el.innerHTML += `<div class="${type==='error'?'text-red-400':'text-slate-500'}">> ${m}</div>`;
             el.scrollTop = el.scrollHeight;
         };
 
-        // --- Mode Switching ---
-        const btnDot = document.getElementById('mode-dot');
-        const btnAvg = document.getElementById('mode-avg');
-        const targetDot = document.getElementById('target-dot');
-        const modeLabel = document.getElementById('sample-mode-label');
+        // --- Smoothing Logic ---
+        function lerp(start, end, amt) {
+            return start + (end - start) * amt;
+        }
 
-        btnDot.onclick = () => {
-            state.syncMode = 'dot';
-            btnDot.classList.add('active');
-            btnAvg.classList.remove('active');
-            targetDot.classList.remove('hidden');
-            modeLabel.textContent = "Target Dot Output";
+        // --- Controls ---
+        document.getElementById('fps-input').onchange = (e) => {
+            state.targetFPS = Math.min(120, Math.max(1, parseInt(e.target.value) || 60));
         };
-
-        btnAvg.onclick = () => {
-            state.syncMode = 'average';
-            btnAvg.classList.add('active');
-            btnDot.classList.remove('active');
-            targetDot.classList.add('hidden');
-            modeLabel.textContent = "Average Screen Output";
+        document.getElementById('smooth-slider').oninput = (e) => {
+            state.smoothing = parseFloat(e.target.value);
+            document.getElementById('smooth-val').textContent = state.smoothing.toFixed(2);
         };
-
-        // --- Draggable Logic ---
-        const dot = document.getElementById('target-dot');
-        const wrapper = document.getElementById('video-wrapper');
-        let isDragging = false;
-
-        const moveDot = (e) => {
-            if (!isDragging || state.syncMode !== 'dot') return;
-            const rect = wrapper.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            let x = (clientX - rect.left) / rect.width;
-            let y = (clientY - rect.top) / rect.height;
-            
-            x = Math.max(0, Math.min(1, x));
-            y = Math.max(0, Math.min(1, y));
-            
-            state.targetX = x;
-            state.targetY = y;
-            
-            dot.style.left = (x * 100) + '%';
-            dot.style.top = (y * 100) + '%';
-        };
-
-        dot.onmousedown = (e) => { isDragging = true; e.preventDefault(); };
-        dot.ontouchstart = (e) => { isDragging = true; };
-        window.onmouseup = () => isDragging = false;
-        window.ontouchend = () => isDragging = false;
-        window.onmousemove = moveDot;
-        window.ontouchmove = moveDot;
-
-        // --- Shortcuts & UI ---
-        document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'f') {
-                const v = document.getElementById('v');
-                if (!document.fullscreenElement) v.requestFullscreen().catch(() => {});
-                else document.exitFullscreen();
-            }
-        });
-
         document.getElementById('boost-slider').oninput = (e) => {
             state.boost = parseFloat(e.target.value);
             document.getElementById('boost-val').textContent = state.boost.toFixed(1) + 'x';
         };
 
-        document.getElementById('rate-slider').oninput = (e) => {
-            state.targetFPS = parseInt(e.target.value);
-            document.getElementById('rate-val').textContent = state.targetFPS + ' Hz';
-        };
+        const btnDot = document.getElementById('mode-dot');
+        const btnAvg = document.getElementById('mode-avg');
+        btnDot.onclick = () => { state.syncMode = 'dot'; btnDot.classList.add('active'); btnAvg.classList.remove('active'); document.getElementById('target-dot').classList.remove('hidden'); };
+        btnAvg.onclick = () => { state.syncMode = 'average'; btnAvg.classList.add('active'); btnDot.classList.remove('active'); document.getElementById('target-dot').classList.add('hidden'); };
 
-        const v = document.getElementById('v');
-        const fileIn = document.getElementById('fileIn');
-        fileIn.onchange = (e) => {
-            const file = e.target.files[0];
-            if(file) {
-                v.src = URL.createObjectURL(file);
-                v.play();
-                logger("Video loaded.");
-            }
+        // --- Draggable ---
+        const dot = document.getElementById('target-dot');
+        const wrapper = document.getElementById('video-wrapper');
+        let isDragging = false;
+        const moveDot = (e) => {
+            if (!isDragging || state.syncMode !== 'dot') return;
+            const rect = wrapper.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            state.targetX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            state.targetY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+            dot.style.left = (state.targetX * 100) + '%';
+            dot.style.top = (state.targetY * 100) + '%';
         };
+        dot.onmousedown = (e) => { isDragging = true; e.preventDefault(); };
+        dot.ontouchstart = (e) => { isDragging = true; };
+        window.onmouseup = window.ontouchend = () => isDragging = false;
+        window.onmousemove = window.ontouchmove = moveDot;
 
+        // --- BLE ---
         document.getElementById('scanBtn').onclick = async () => {
             try {
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [0xFFD0, 0xFFF0]
-                });
-                logger(`Connecting...`);
+                const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [0xFFD0, 0xFFF0] });
                 const server = await device.gatt.connect();
                 const services = await server.getPrimaryServices();
                 for (const s of services) {
                     const chars = await s.getCharacteristics();
-                    for (const c of chars) {
-                        if (c.uuid.includes('ffd5') || c.uuid.includes('fff3')) {
-                            state.char = c; break;
-                        }
-                    }
+                    for (const c of chars) { if (c.uuid.includes('ffd5') || c.uuid.includes('fff3')) { state.char = c; break; } }
                     if (state.char) break;
                 }
                 if (state.char) {
                     document.getElementById('setup-panel').classList.add('hidden');
                     document.getElementById('main-ui').classList.remove('hidden');
-                    document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_15px_#3b82f6]";
-                    logger("Hardware Connected", "success");
+                    document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_#3b82f6]";
                 }
             } catch (err) { logger(err.message, "error"); }
         };
 
-        // --- Processing Logic ---
+        const v = document.getElementById('v');
+        const fileIn = document.getElementById('fileIn');
+        fileIn.onchange = (e) => { if(e.target.files[0]) { v.src = URL.createObjectURL(e.target.files[0]); v.play(); } };
+
         const ctx = document.getElementById('c').getContext('2d', { willReadFrequently: true });
         
         function processFrame() {
             if (!v.paused && !v.ended) {
-                let r, g, b;
-
                 if (state.syncMode === 'dot') {
-                    // Draw small area around dot
                     ctx.drawImage(v, 0, 0, 64, 64);
-                    const sampleX = Math.floor(state.targetX * 63);
-                    const sampleY = Math.floor(state.targetY * 63);
-                    const p = ctx.getImageData(sampleX, sampleY, 1, 1).data;
-                    r = p[0]; g = p[1]; b = p[2];
+                    const p = ctx.getImageData(Math.floor(state.targetX * 63), Math.floor(state.targetY * 63), 1, 1).data;
+                    state.targetRGB = { r: p[0], g: p[1], b: p[2] };
                 } else {
-                    // Average entire screen
-                    // We draw video very small (8x8) to the canvas
-                    // Browsers automatically average pixels when scaling down like this
                     ctx.drawImage(v, 0, 0, 8, 8);
                     const p = ctx.getImageData(0, 0, 8, 8).data;
                     let tr=0, tg=0, tb=0;
-                    for(let i=0; i<p.length; i+=4) {
-                        tr += p[i]; tg += p[i+1]; tb += p[i+2];
-                    }
-                    r = tr/64; g = tg/64; b = tb/64;
+                    for(let i=0; i<p.length; i+=4) { tr += p[i]; tg += p[i+1]; tb += p[i+2]; }
+                    state.targetRGB = { r: tr/64, g: tg/64, b: tb/64 };
                 }
                 
-                r = Math.min(255, r * state.boost);
-                g = Math.min(255, g * state.boost);
-                b = Math.min(255, b * state.boost);
+                // Smooth Interpolation
+                state.currentRGB.r = lerp(state.currentRGB.r, state.targetRGB.r * state.boost, state.smoothing);
+                state.currentRGB.g = lerp(state.currentRGB.g, state.targetRGB.g * state.boost, state.smoothing);
+                state.currentRGB.b = lerp(state.currentRGB.b, state.targetRGB.b * state.boost, state.smoothing);
+
+                const r = Math.min(255, state.currentRGB.r);
+                const g = Math.min(255, state.currentRGB.g);
+                const b = Math.min(255, state.currentRGB.b);
 
                 const hex = "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1).toUpperCase();
                 document.getElementById('color-prev').style.backgroundColor = hex;
@@ -327,7 +248,7 @@
                 }
 
                 if (state.char && now - state.lastTime > (1000 / state.targetFPS)) {
-                    const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]);
+                    const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, Math.round(r), Math.round(g), Math.round(b), 0x10, 0xef]);
                     state.char.writeValue(packet).catch(() => {});
                     state.lastTime = now;
                 }
