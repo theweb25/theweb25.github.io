@@ -3,164 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lotus Sync Universal</title>
+    <title>Lotus Sync Elite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .btn-primary { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-        .btn-primary:active { transform: scale(0.96); opacity: 0.9; }
-        .slideIn { animation: slideIn 0.4s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { background: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
+        .btn-primary { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+        .btn-primary:active { transform: scale(0.98); }
+        .slider { appearance: none; height: 4px; background: #1e293b; border-radius: 2px; outline: none; }
+        .slider::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: #3b82f6; border-radius: 50%; cursor: pointer; border: 2px solid white; }
+        .hidden { display: none !important; }
+        
+        /* Draggable Target Style */
+        #target-dot {
+            width: 24px;
+            height: 24px;
+            background: rgba(239, 68, 68, 0.8);
+            border: 3px solid white;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            z-index: 50;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+            pointer-events: auto;
+        }
+        #target-dot::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 100px; height: 1px; background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+        }
+        #target-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            height: 100px; width: 1px; background: rgba(255,255,255,0.2);
+            transform: translate(-50%, -50%);
+        }
+
+        .toggle-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+        .toggle-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
     </style>
 </head>
-<body class="p-6 pb-20">
-    <div class="max-w-md mx-auto space-y-6">
+<body class="p-4 pb-20">
+    <div class="max-w-md mx-auto space-y-4">
         
         <header class="flex justify-between items-center py-2">
             <div>
                 <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white">Lotus<span class="text-blue-500">Sync</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Aggressive Detect v3.6</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Precision Sync v4.2</p>
             </div>
-            <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
+            <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10 shadow-[0_0_10px_rgba(0,0,0,0.5)]"></div>
         </header>
 
-        <!-- Setup Panel -->
-        <div id="setup-panel" class="glass rounded-[2.5rem] p-6 space-y-6">
-            <div class="flex justify-between items-center px-1">
-                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Device Connection</span>
-                <span id="dev-status" class="text-[9px] font-bold text-blue-400 px-2 py-0.5 bg-blue-400/10 rounded-full">WAITING</span>
-            </div>
-
-            <button id="scanBtn" class="btn-primary w-full py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all">
-                Connect to LED
+        <!-- Connection Panel -->
+        <div id="setup-panel" class="glass rounded-[2rem] p-6 space-y-4">
+            <button id="scanBtn" class="btn-primary w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
+                Connect LED Hardware
             </button>
         </div>
 
-        <!-- Sync Control (Shown when connected) -->
-        <div id="sync-ctrl" class="hidden glass rounded-[2.5rem] p-6 space-y-6 slideIn">
-            <div class="aspect-video bg-black rounded-3xl overflow-hidden relative border border-white/5 shadow-2xl">
-                <video id="v" class="w-full h-full object-cover" playsinline crossorigin="anonymous"></video>
-                <div id="upload-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 cursor-pointer">
-                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Tap to Load Movie</p>
-                    <input type="file" id="fileIn" class="hidden" accept="video/*">
+        <!-- Main Interface -->
+        <div id="main-ui" class="hidden space-y-4">
+            
+            <!-- Video Player -->
+            <div class="glass rounded-[2rem] p-3 relative">
+                <div id="video-wrapper" class="aspect-video bg-black rounded-[1.5rem] overflow-hidden relative border border-white/5">
+                    <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline crossorigin="anonymous"></video>
+                    
+                    <!-- The Draggable Dot -->
+                    <div id="target-dot"></div>
+
+                    <div id="change-hint" class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                        <span class="text-[8px] font-black uppercase text-white bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">Sync Active</span>
+                    </div>
+                </div>
+                <div class="mt-3 flex justify-center">
+                   <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400 transition-colors">Change Video File</button>
+                </div>
+                <input type="file" id="fileIn" class="hidden" accept="video/*">
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 px-2">
+                <div class="glass flex-1 p-2 rounded-xl flex justify-between">
+                    <span>Signal</span>
+                    <span class="text-blue-400">Stable</span>
+                </div>
+                <div class="glass flex-1 p-2 rounded-xl flex justify-between">
+                    <span>Performance</span>
+                    <span id="fps-val" class="text-emerald-400">0 FPS</span>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-6 bg-white/5 p-5 rounded-3xl border border-white/5">
-                <div id="color-prev" class="w-16 h-16 rounded-2xl shadow-lg border border-white/10 transition-colors duration-100"></div>
+
+            <!-- Settings Menu -->
+            <div class="glass rounded-[2rem] p-6 space-y-6">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Processing</h3>
+
+                <div id="settings-content" class="space-y-6">
+                    <!-- Sync Mode Selection -->
+                    <div class="space-y-3">
+                        <p class="text-[10px] font-bold uppercase text-slate-400">Sync Mode</p>
+                        <div class="flex gap-2">
+                            <button id="mode-dot" class="toggle-btn active flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Target Dot</button>
+                            <button id="mode-avg" class="toggle-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Entire Screen</button>
+                        </div>
+                    </div>
+
+                    <!-- Color Exaggeration -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-[10px] font-bold uppercase">
+                            <span>Color Boost</span>
+                            <span id="boost-val" class="text-blue-400">1.0x</span>
+                        </div>
+                        <input type="range" id="boost-slider" min="1" max="4" step="0.1" value="1" class="slider w-full">
+                    </div>
+
+                    <!-- Sync Speed / FPS Limit -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-[10px] font-bold uppercase">
+                            <span>Refresh Rate</span>
+                            <span id="rate-val" class="text-blue-400">10 Hz</span>
+                        </div>
+                        <input type="range" id="rate-slider" min="5" max="30" step="1" value="10" class="slider w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="glass rounded-[2rem] p-5 flex items-center gap-5 border-l-4 border-blue-500">
+                <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-xl border border-white/10"></div>
                 <div>
-                    <p id="hex-code" class="text-2xl font-mono font-black tracking-tighter text-white">#000000</p>
-                    <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">Sync Active</p>
+                    <p id="hex-code" class="text-xl font-mono font-black text-white">#000000</p>
+                    <p id="sample-mode-label" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Target Dot Output</p>
                 </div>
             </div>
         </div>
 
-        <!-- Debug Log -->
+        <!-- Log Area -->
         <div class="space-y-2">
-            <p class="text-[10px] font-black text-slate-500 uppercase px-2">System Output</p>
-            <div id="log" class="text-[9px] font-mono text-slate-400 bg-black/40 p-4 rounded-2xl h-48 overflow-y-auto border border-white/5 whitespace-pre-wrap leading-relaxed"></div>
+            <div id="log" class="text-[8px] font-mono text-slate-500 bg-black/20 p-4 rounded-2xl h-20 overflow-y-auto border border-white/5 whitespace-pre-wrap"></div>
         </div>
     </div>
 
-    <canvas id="c" width="4" height="4" class="hidden"></canvas>
+    <!-- Hidden Canvas for sampling -->
+    <canvas id="c" width="64" height="64" class="hidden"></canvas>
 
     <script>
-        const state = { char: null, lastTime: 0 };
+        const state = { 
+            char: null, 
+            lastTime: 0,
+            boost: 1.0,
+            targetFPS: 10,
+            frameCount: 0,
+            fpsLastTime: Date.now(),
+            targetX: 0.5, 
+            targetY: 0.5,
+            syncMode: 'dot' // 'dot' or 'average'
+        };
+
         const logger = (m, type='info') => {
             const el = document.getElementById('log');
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-400');
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-emerald-400' : 'text-slate-500');
             el.innerHTML += `<div class="${color}">> ${m}</div>`;
             el.scrollTop = el.scrollHeight;
         };
 
-        // Try to find ANY writeable characteristic
-        async function aggressiveFind(server) {
-            logger("Scanning all available services...");
-            const services = await server.getPrimaryServices();
+        // --- Mode Switching ---
+        const btnDot = document.getElementById('mode-dot');
+        const btnAvg = document.getElementById('mode-avg');
+        const targetDot = document.getElementById('target-dot');
+        const modeLabel = document.getElementById('sample-mode-label');
+
+        btnDot.onclick = () => {
+            state.syncMode = 'dot';
+            btnDot.classList.add('active');
+            btnAvg.classList.remove('active');
+            targetDot.classList.remove('hidden');
+            modeLabel.textContent = "Target Dot Output";
+        };
+
+        btnAvg.onclick = () => {
+            state.syncMode = 'average';
+            btnAvg.classList.add('active');
+            btnDot.classList.remove('active');
+            targetDot.classList.add('hidden');
+            modeLabel.textContent = "Average Screen Output";
+        };
+
+        // --- Draggable Logic ---
+        const dot = document.getElementById('target-dot');
+        const wrapper = document.getElementById('video-wrapper');
+        let isDragging = false;
+
+        const moveDot = (e) => {
+            if (!isDragging || state.syncMode !== 'dot') return;
+            const rect = wrapper.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            for (const service of services) {
-                logger(`Checking Service: ${service.uuid}`);
-                const chars = await service.getCharacteristics();
-                for (const char of chars) {
-                    logger(`- Found Char: ${char.uuid}`);
-                    // 0xFFD5 and 0xFFF3 are the most common write ports for these LEDs
-                    if (char.uuid.includes('ffd5') || char.uuid.includes('fff3')) {
-                        logger(`MATCH FOUND: ${char.uuid}`, "success");
-                        return char;
-                    }
-                }
+            let x = (clientX - rect.left) / rect.width;
+            let y = (clientY - rect.top) / rect.height;
+            
+            x = Math.max(0, Math.min(1, x));
+            y = Math.max(0, Math.min(1, y));
+            
+            state.targetX = x;
+            state.targetY = y;
+            
+            dot.style.left = (x * 100) + '%';
+            dot.style.top = (y * 100) + '%';
+        };
+
+        dot.onmousedown = (e) => { isDragging = true; e.preventDefault(); };
+        dot.ontouchstart = (e) => { isDragging = true; };
+        window.onmouseup = () => isDragging = false;
+        window.ontouchend = () => isDragging = false;
+        window.onmousemove = moveDot;
+        window.ontouchmove = moveDot;
+
+        // --- Shortcuts & UI ---
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'f') {
+                const v = document.getElementById('v');
+                if (!document.fullscreenElement) v.requestFullscreen().catch(() => {});
+                else document.exitFullscreen();
             }
-            return null;
-        }
+        });
 
-        document.getElementById('scanBtn').onclick = async () => {
-            logger("Requesting device access...");
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [0xFFD0, 0xFFF0, "0000ffd0-0000-1000-8000-00805f9b34fb", "0000fff0-0000-1000-8000-00805f9b34fb"]
-                });
+        document.getElementById('boost-slider').oninput = (e) => {
+            state.boost = parseFloat(e.target.value);
+            document.getElementById('boost-val').textContent = state.boost.toFixed(1) + 'x';
+        };
 
-                logger(`Authorized: ${device.name}`, "success");
-                const server = await device.gatt.connect();
-                logger("GATT Server Connected.");
-                
-                state.char = await aggressiveFind(server);
-
-                if (state.char) {
-                    logger("SWITCHING UI...", "success");
-                    document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
-                    document.getElementById('setup-panel').style.display = 'none';
-                    document.getElementById('sync-ctrl').classList.remove('hidden');
-                } else {
-                    logger("Couldn't find the correct control characteristic.", "error");
-                }
-
-            } catch (e) {
-                logger("Error: " + e.message, "error");
-            }
+        document.getElementById('rate-slider').oninput = (e) => {
+            state.targetFPS = parseInt(e.target.value);
+            document.getElementById('rate-val').textContent = state.targetFPS + ' Hz';
         };
 
         const v = document.getElementById('v');
-        const overlay = document.getElementById('upload-overlay');
         const fileIn = document.getElementById('fileIn');
-        const ctx = document.getElementById('c').getContext('2d');
-
-        overlay.onclick = () => fileIn.click();
         fileIn.onchange = (e) => {
             const file = e.target.files[0];
             if(file) {
                 v.src = URL.createObjectURL(file);
-                overlay.style.display = 'none';
                 v.play();
+                logger("Video loaded.");
             }
         };
 
-        async function frameLoop() {
-            if(!v.paused && state.char) {
-                ctx.drawImage(v, 0, 0, 4, 4);
-                const p = ctx.getImageData(0,0,4,4).data;
-                let r=0, g=0, b=0;
-                for(let i=0; i<p.length; i+=4) { r+=p[i]; g+=p[i+1]; b+=p[i+2]; }
-                r=Math.floor(r/16); g=Math.floor(g/16); b=Math.floor(b/16);
+        document.getElementById('scanBtn').onclick = async () => {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: [0xFFD0, 0xFFF0]
+                });
+                logger(`Connecting...`);
+                const server = await device.gatt.connect();
+                const services = await server.getPrimaryServices();
+                for (const s of services) {
+                    const chars = await s.getCharacteristics();
+                    for (const c of chars) {
+                        if (c.uuid.includes('ffd5') || c.uuid.includes('fff3')) {
+                            state.char = c; break;
+                        }
+                    }
+                    if (state.char) break;
+                }
+                if (state.char) {
+                    document.getElementById('setup-panel').classList.add('hidden');
+                    document.getElementById('main-ui').classList.remove('hidden');
+                    document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_15px_#3b82f6]";
+                    logger("Hardware Connected", "success");
+                }
+            } catch (err) { logger(err.message, "error"); }
+        };
 
-                const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+        // --- Processing Logic ---
+        const ctx = document.getElementById('c').getContext('2d', { willReadFrequently: true });
+        
+        function processFrame() {
+            if (!v.paused && !v.ended) {
+                let r, g, b;
+
+                if (state.syncMode === 'dot') {
+                    // Draw small area around dot
+                    ctx.drawImage(v, 0, 0, 64, 64);
+                    const sampleX = Math.floor(state.targetX * 63);
+                    const sampleY = Math.floor(state.targetY * 63);
+                    const p = ctx.getImageData(sampleX, sampleY, 1, 1).data;
+                    r = p[0]; g = p[1]; b = p[2];
+                } else {
+                    // Average entire screen
+                    // We draw video very small (8x8) to the canvas
+                    // Browsers automatically average pixels when scaling down like this
+                    ctx.drawImage(v, 0, 0, 8, 8);
+                    const p = ctx.getImageData(0, 0, 8, 8).data;
+                    let tr=0, tg=0, tb=0;
+                    for(let i=0; i<p.length; i+=4) {
+                        tr += p[i]; tg += p[i+1]; tb += p[i+2];
+                    }
+                    r = tr/64; g = tg/64; b = tb/64;
+                }
+                
+                r = Math.min(255, r * state.boost);
+                g = Math.min(255, g * state.boost);
+                b = Math.min(255, b * state.boost);
+
+                const hex = "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1).toUpperCase();
                 document.getElementById('color-prev').style.backgroundColor = hex;
                 document.getElementById('hex-code').textContent = hex;
 
+                state.frameCount++;
                 const now = Date.now();
-                if(now - state.lastTime > 200) { 
-                    try {
-                        const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]);
-                        await state.char.writeValue(packet);
-                        state.lastTime = now;
-                    } catch(e) {}
+                if (now - state.fpsLastTime >= 1000) {
+                    document.getElementById('fps-val').textContent = state.frameCount + " FPS";
+                    state.frameCount = 0;
+                    state.fpsLastTime = now;
+                }
+
+                if (state.char && now - state.lastTime > (1000 / state.targetFPS)) {
+                    const packet = new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]);
+                    state.char.writeValue(packet).catch(() => {});
+                    state.lastTime = now;
                 }
             }
-            requestAnimationFrame(frameLoop);
+            requestAnimationFrame(processFrame);
         }
-        frameLoop();
+        processFrame();
     </script>
 </body>
 </html>
