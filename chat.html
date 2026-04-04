@@ -6,160 +6,182 @@
     <title>Lotus Sync Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
-        .device-card { transition: all 0.2s; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .device-card:active { transform: scale(0.98); background: rgba(59, 130, 246, 0.1); }
-        .status-glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        body { background: #020617; color: #f8fafc; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-primary { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .btn-primary:active { transform: scale(0.96); opacity: 0.9; }
+        .device-item { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-6 pb-20">
     <div class="max-w-md mx-auto space-y-6">
         
-        <!-- Dashboard Header -->
-        <div class="flex justify-between items-center bg-blue-900/20 p-5 rounded-[2rem] border border-blue-500/20">
+        <header class="flex justify-between items-center py-2">
             <div>
-                <h1 class="font-black italic text-2xl tracking-tighter text-white">LOTUS<span class="text-blue-500">SYNC</span></h1>
-                <p id="env-status" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Checking Browser...</p>
+                <h1 class="text-2xl font-black tracking-tighter italic">LOTUS<span class="text-blue-500">SYNC</span></h1>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Universal Mode v3.4</p>
             </div>
-            <div id="dot" class="w-3 h-3 bg-red-500 rounded-full border-2 border-white/10"></div>
+            <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
+        </header>
+
+        <!-- Picker Troubleshooting -->
+        <div id="troubleshoot" class="p-4 rounded-3xl bg-blue-500/10 border border-blue-500/20 space-y-3">
+            <h3 class="text-[10px] font-black text-blue-400 uppercase tracking-widest">No Popup Appearing?</h3>
+            <p class="text-[11px] text-slate-300 leading-tight">
+                Some browsers block the device list. 
+                1. Ensure you are using <b>Bluefy</b> (iOS) or <b>Chrome</b> (Desktop/Android).
+                2. Make sure you are on <b>HTTPS</b>.
+                3. Try <b>Manual Search</b> below if the main button fails.
+            </p>
         </div>
 
-        <!-- The Picker UI -->
-        <div class="glass rounded-[2.5rem] p-6 space-y-4">
-            <div class="flex justify-between items-center px-2">
-                <h2 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Device Dashboard</h2>
-                <span id="count" class="text-[9px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">0 PAIRED</span>
+        <!-- Main Controller UI -->
+        <div class="glass rounded-[2.5rem] p-6 space-y-6">
+            <div class="flex justify-between items-center px-1">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Connection Hub</span>
+                <span id="dev-status" class="text-[9px] font-bold text-blue-400 px-2 py-0.5 bg-blue-400/10 rounded-full">READY</span>
             </div>
 
-            <div id="pickerList" class="space-y-3 min-h-[120px] flex flex-col justify-center border-y border-white/5 py-4">
-                <div id="empty" class="text-center text-xs text-slate-500 italic py-4">
-                    Tap below to search for your LEDs
+            <div class="space-y-4">
+                <button id="scanBtn" class="btn-primary w-full py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all">
+                    Quick Connect (Auto)
+                </button>
+                
+                <div class="flex items-center gap-2">
+                    <div class="h-[1px] flex-1 bg-white/10"></div>
+                    <span class="text-[9px] font-bold text-slate-600 uppercase">OR</span>
+                    <div class="h-[1px] flex-1 bg-white/10"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <input type="text" id="manualName" placeholder="Enter Device Name (e.g. ELK-BLEDOM)" class="w-full p-4 rounded-2xl text-xs font-bold outline-none focus:border-blue-500/50 transition-all">
+                    <button id="manualBtn" class="w-full py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                        Target Specific Device
+                    </button>
                 </div>
             </div>
-
-            <button id="addBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-3xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-lg shadow-blue-600/20">
-                + Search for Device
-            </button>
         </div>
 
-        <!-- Sync Interface (Hidden) -->
-        <div id="syncUI" class="hidden glass rounded-[2.5rem] p-6 space-y-6 animate-in slide-in-from-bottom-8">
-            <div class="aspect-video bg-black rounded-3xl overflow-hidden relative border border-white/5 shadow-2xl">
-                <video id="v" class="w-full h-full" playsinline crossorigin="anonymous"></video>
-                <div id="drop" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 cursor-pointer">
-                    <div class="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center mb-3">
-                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-width="2"></path></svg>
-                    </div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tap to load movie</span>
+        <!-- Sync Control -->
+        <div id="sync-ctrl" class="hidden glass rounded-[2.5rem] p-6 space-y-6 slideIn">
+            <div class="aspect-video bg-black rounded-3xl overflow-hidden relative border border-white/5">
+                <video id="v" class="w-full h-full object-cover" playsinline crossorigin="anonymous"></video>
+                <div id="upload-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 cursor-pointer">
+                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Select Video</p>
+                    <input type="file" id="fileIn" class="hidden" accept="video/*">
                 </div>
-                <input type="file" id="fi" class="hidden" accept="video/*">
             </div>
-
-            <div class="flex items-center gap-6 p-2">
-                <div id="preview" class="w-16 h-16 rounded-2xl border border-white/10 shadow-xl"></div>
+            
+            <div class="flex items-center gap-6 bg-white/5 p-4 rounded-3xl">
+                <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-lg border border-white/10"></div>
                 <div>
-                    <p id="hex" class="text-2xl font-black font-mono tracking-tighter">#000000</p>
-                    <p class="text-[9px] text-slate-500 font-bold uppercase">Syncing to LEDs</p>
+                    <p id="hex-code" class="text-xl font-mono font-black tracking-tighter">#000000</p>
+                    <p class="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">Syncing to LEDs</p>
                 </div>
             </div>
         </div>
 
-        <!-- Status Log -->
-        <div id="log" class="bg-black/40 p-4 rounded-2xl font-mono text-[9px] text-slate-600 h-24 overflow-y-auto border border-white/5">
-            > App Ready. Use Bluefy browser.
+        <div class="space-y-2">
+            <p class="text-[10px] font-black text-slate-500 uppercase px-2">System Output</p>
+            <div id="log" class="text-[9px] font-mono text-slate-400 bg-black/40 p-4 rounded-2xl h-24 overflow-y-auto border border-white/5 whitespace-pre-wrap"></div>
         </div>
     </div>
 
-    <canvas id="c" width="5" height="5" style="display:none"></canvas>
+    <canvas id="c" width="4" height="4" class="hidden"></canvas>
 
     <script>
-        let ledChar = null;
-        const log = (m, e=false) => {
-            const d = document.createElement('div');
-            if(e) d.className = "text-red-500";
-            d.textContent = `> ${m}`;
-            document.getElementById('log').appendChild(d);
-            document.getElementById('log').scrollTop = 9999;
+        const state = { char: null, lastTime: 0 };
+        const logger = (m, isErr=false) => {
+            const el = document.getElementById('log');
+            el.innerHTML += `<div class="${isErr?'text-red-400':''}">> ${m}</div>`;
+            el.scrollTop = el.scrollHeight;
         };
 
-        window.onload = () => {
-            if(!navigator.bluetooth) {
-                document.getElementById('env-status').textContent = "INCOMPATIBLE BROWSER";
-                log("Error: Current browser does not support Bluetooth.", true);
-            } else {
-                document.getElementById('env-status').textContent = "BLE ENVIRONMENT OK";
-                log("Environment validated. Ready for pairing.");
-            }
-        };
-
-        document.getElementById('addBtn').onclick = async () => {
-            log("Opening System Selector...");
+        async function requestLED(options) {
+            logger("Requesting device access...");
             try {
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [0xFFD0, 0xFFF0]
-                });
-
-                log(`Paired with ${device.name || 'LED'}`);
+                const device = await navigator.bluetooth.requestDevice(options);
+                logger(`Found: ${device.name || 'LED'}`, "success");
                 
-                // Update In-App Picker UI
-                document.getElementById('empty').style.display = 'none';
-                document.getElementById('count').textContent = "1 PAIRED";
-                const card = document.createElement('div');
-                card.className = "device-card glass p-4 rounded-2xl flex items-center justify-between cursor-pointer";
-                card.innerHTML = `<div><p class="text-xs font-bold">${device.name || 'Lotus LED'}</p><p class="text-[8px] text-slate-500">READY TO CONNECT</p></div><span class="text-[10px] font-bold text-blue-500">TAP TO SYNC</span>`;
+                const server = await device.gatt.connect();
+                let service;
+                try { service = await server.getPrimaryService(0xFFD0); } 
+                catch(e) { service = await server.getPrimaryService(0xFFF0); }
                 
-                card.onclick = async () => {
-                    log("Connecting GATT...");
-                    const server = await device.gatt.connect();
-                    const service = await server.getPrimaryService(0xFFD0);
-                    ledChar = await service.getCharacteristic(0xFFD5);
-                    
-                    log("CONNECTION SUCCESS", "text-emerald-400");
-                    document.getElementById('dot').className = "w-3 h-3 bg-emerald-500 rounded-full status-glow";
-                    document.getElementById('syncUI').classList.remove('hidden');
-                };
+                state.char = await service.getCharacteristic(0xFFD5);
+                
+                logger("STABLE CONNECTION", "success");
+                document.getElementById('status-dot').className = "w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
+                document.getElementById('sync-ctrl').classList.remove('hidden');
+                document.getElementById('dev-status').textContent = "CONNECTED";
+            } catch (e) {
+                logger("Error: " + e.message, true);
+                if (e.name === 'NotFoundError') {
+                    logger("The browser's Bluetooth popup didn't show or was closed.", true);
+                }
+            }
+        }
 
-                document.getElementById('pickerList').appendChild(card);
+        // Auto Scan
+        document.getElementById('scanBtn').onclick = () => {
+            requestLED({
+                acceptAllDevices: true,
+                optionalServices: [0xFFD0, 0xFFF0, 0xFFD5]
+            });
+        };
 
-            } catch (err) {
-                log(err.message, true);
+        // Manual Search (Helps when popups are fussy)
+        document.getElementById('manualBtn').onclick = () => {
+            const name = document.getElementById('manualName').value.trim();
+            if (!name) return logger("Please enter a device name first.", true);
+            
+            requestLED({
+                filters: [{ namePrefix: name }],
+                optionalServices: [0xFFD0, 0xFFF0, 0xFFD5]
+            });
+        };
+
+        // Video Logic
+        const v = document.getElementById('v');
+        const overlay = document.getElementById('upload-overlay');
+        const fileIn = document.getElementById('fileIn');
+        const ctx = document.getElementById('c').getContext('2d');
+
+        overlay.onclick = () => fileIn.click();
+        fileIn.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                v.src = URL.createObjectURL(file);
+                overlay.style.display = 'none';
+                v.play();
             }
         };
 
-        // Sync Logic
-        const v = document.getElementById('v');
-        const fi = document.getElementById('fi');
-        const drop = document.getElementById('drop');
-        const canvas = document.getElementById('c');
-        const ctx = canvas.getContext('2d', {willReadFrequently: true});
-
-        drop.onclick = () => fi.click();
-        fi.onchange = (e) => {
-            const file = e.target.files[0];
-            if(file) { v.src = URL.createObjectURL(file); drop.style.display='none'; v.play(); }
-        };
-
-        async function loop() {
-            if(!v.paused && ledChar) {
-                ctx.drawImage(v, 0, 0, 5, 5);
-                const p = ctx.getImageData(0,0,5,5).data;
+        async function frameLoop() {
+            if(!v.paused && state.char) {
+                ctx.drawImage(v, 0, 0, 4, 4);
+                const p = ctx.getImageData(0,0,4,4).data;
                 let r=0, g=0, b=0;
                 for(let i=0; i<p.length; i+=4) { r+=p[i]; g+=p[i+1]; b+=p[i+2]; }
-                r = Math.floor(r/25); g = Math.floor(g/25); b = Math.floor(b/25);
-                
-                const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
-                document.getElementById('preview').style.backgroundColor = hex;
-                document.getElementById('hex').textContent = hex;
+                r=Math.floor(r/16); g=Math.floor(g/16); b=Math.floor(b/16);
 
-                try {
-                    await ledChar.writeValue(new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]));
-                } catch(e) {}
+                const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+                document.getElementById('color-prev').style.backgroundColor = hex;
+                document.getElementById('hex-code').textContent = hex;
+
+                const now = Date.now();
+                if(now - state.lastTime > 150) { 
+                    try {
+                        await state.char.writeValue(new Uint8Array([0x7e, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xef]));
+                        state.lastTime = now;
+                    } catch(e) {}
+                }
             }
-            requestAnimationFrame(loop);
+            requestAnimationFrame(frameLoop);
         }
-        loop();
+        frameLoop();
     </script>
 </body>
 </html>
