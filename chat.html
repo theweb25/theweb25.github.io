@@ -39,7 +39,7 @@
             text-align: center;
         }
 
-        .toggle-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+        .toggle-btn { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; color: #64748b; }
         .toggle-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
     </style>
 </head>
@@ -49,7 +49,7 @@
         <header class="flex justify-between items-center py-2">
             <div>
                 <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white">Lotus<span class="text-blue-500">Sync</span></h1>
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Ultra Smooth v5.0</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-[0.2em]">Universal Mirror v6.0</p>
             </div>
             <div id="status-dot" class="w-3 h-3 rounded-full bg-slate-700 border-2 border-white/10"></div>
         </header>
@@ -61,13 +61,19 @@
         </div>
 
         <div id="main-ui" class="hidden space-y-4">
+            <!-- Source Selector -->
+            <div class="flex gap-2 p-1 glass rounded-2xl">
+                <button id="src-video" class="toggle-btn active flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Local Video</button>
+                <button id="src-screen" class="toggle-btn flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest">Mirror Screen</button>
+            </div>
+
             <div class="glass rounded-[2rem] p-3 relative">
                 <div id="video-wrapper" class="aspect-video bg-black rounded-[1.5rem] overflow-hidden relative border border-white/5">
-                    <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline crossorigin="anonymous"></video>
+                    <video id="v" class="w-full h-full object-contain pointer-events-none" playsinline autoplay muted crossorigin="anonymous"></video>
                     <div id="target-dot"></div>
                 </div>
-                <div class="mt-3 flex justify-center">
-                   <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400">Change Video</button>
+                <div id="video-controls" class="mt-3 flex justify-center">
+                   <button onclick="document.getElementById('fileIn').click()" class="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-blue-400">Choose Video File</button>
                 </div>
                 <input type="file" id="fileIn" class="hidden" accept="video/*">
             </div>
@@ -81,7 +87,7 @@
 
             <div class="glass rounded-[2rem] p-6 space-y-6">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Engine Settings</h3>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Processing Engine</h3>
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] text-slate-500 uppercase font-bold">Hz Limit:</span>
                         <input type="number" id="fps-input" value="60" min="1" max="120" class="input-dark text-[10px]">
@@ -92,14 +98,14 @@
                     <div class="space-y-3">
                         <p class="text-[10px] font-bold uppercase text-slate-400">Sync Mode</p>
                         <div class="flex gap-2">
-                            <button id="mode-dot" class="toggle-btn active flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Dot</button>
-                            <button id="mode-avg" class="toggle-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Average</button>
+                            <button id="mode-dot" class="toggle-btn active flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Dot Target</button>
+                            <button id="mode-avg" class="toggle-btn flex-1 py-3 rounded-xl text-[10px] font-black uppercase">Average Area</button>
                         </div>
                     </div>
 
                     <div class="space-y-3">
                         <div class="flex justify-between text-[10px] font-bold uppercase">
-                            <span>Smoothing (Ease)</span>
+                            <span>Smoothing</span>
                             <span id="smooth-val" class="text-blue-400">0.15</span>
                         </div>
                         <input type="range" id="smooth-slider" min="0.01" max="1.0" step="0.01" value="0.15" class="slider w-full">
@@ -107,10 +113,10 @@
 
                     <div class="space-y-3">
                         <div class="flex justify-between text-[10px] font-bold uppercase">
-                            <span>Color Boost</span>
+                            <span>Brightness/Boost</span>
                             <span id="boost-val" class="text-blue-400">1.0x</span>
                         </div>
-                        <input type="range" id="boost-slider" min="1" max="4" step="0.1" value="1" class="slider w-full">
+                        <input type="range" id="boost-slider" min="1" max="5" step="0.1" value="1" class="slider w-full">
                     </div>
                 </div>
             </div>
@@ -119,7 +125,7 @@
                 <div id="color-prev" class="w-14 h-14 rounded-2xl shadow-xl border border-white/10"></div>
                 <div>
                     <p id="hex-code" class="text-xl font-mono font-black text-white">#000000</p>
-                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Smooth Output</p>
+                    <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Hardware Preview</p>
                 </div>
             </div>
         </div>
@@ -136,7 +142,8 @@
             targetX: 0.5, targetY: 0.5, syncMode: 'dot',
             currentRGB: { r: 0, g: 0, b: 0 },
             targetRGB: { r: 0, g: 0, b: 0 },
-            smoothing: 0.15
+            smoothing: 0.15,
+            screenStream: null
         };
 
         const logger = (m, type='info') => {
@@ -145,15 +152,10 @@
             el.scrollTop = el.scrollHeight;
         };
 
-        // --- Smoothing Logic ---
-        function lerp(start, end, amt) {
-            return start + (end - start) * amt;
-        }
+        function lerp(start, end, amt) { return start + (end - start) * amt; }
 
         // --- Controls ---
-        document.getElementById('fps-input').onchange = (e) => {
-            state.targetFPS = Math.min(120, Math.max(1, parseInt(e.target.value) || 60));
-        };
+        document.getElementById('fps-input').onchange = (e) => state.targetFPS = Math.min(120, Math.max(1, parseInt(e.target.value) || 60));
         document.getElementById('smooth-slider').oninput = (e) => {
             state.smoothing = parseFloat(e.target.value);
             document.getElementById('smooth-val').textContent = state.smoothing.toFixed(2);
@@ -167,6 +169,36 @@
         const btnAvg = document.getElementById('mode-avg');
         btnDot.onclick = () => { state.syncMode = 'dot'; btnDot.classList.add('active'); btnAvg.classList.remove('active'); document.getElementById('target-dot').classList.remove('hidden'); };
         btnAvg.onclick = () => { state.syncMode = 'average'; btnAvg.classList.add('active'); btnDot.classList.remove('active'); document.getElementById('target-dot').classList.add('hidden'); };
+
+        // --- Source Switching ---
+        const v = document.getElementById('v');
+        const btnSrcVideo = document.getElementById('src-video');
+        const btnSrcScreen = document.getElementById('src-screen');
+        const videoCtrl = document.getElementById('video-controls');
+
+        btnSrcVideo.onclick = () => {
+            if (state.screenStream) {
+                state.screenStream.getTracks().forEach(t => t.stop());
+                state.screenStream = null;
+            }
+            btnSrcVideo.classList.add('active');
+            btnSrcScreen.classList.remove('active');
+            videoCtrl.classList.remove('hidden');
+            v.srcObject = null;
+        };
+
+        btnSrcScreen.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                state.screenStream = stream;
+                v.srcObject = stream;
+                v.play();
+                btnSrcScreen.classList.add('active');
+                btnSrcVideo.classList.remove('active');
+                videoCtrl.classList.add('hidden');
+                logger("Screen mirroring active.");
+            } catch (err) { logger("Mirroring cancelled", "error"); }
+        };
 
         // --- Draggable ---
         const dot = document.getElementById('target-dot');
@@ -206,14 +238,14 @@
             } catch (err) { logger(err.message, "error"); }
         };
 
-        const v = document.getElementById('v');
         const fileIn = document.getElementById('fileIn');
         fileIn.onchange = (e) => { if(e.target.files[0]) { v.src = URL.createObjectURL(e.target.files[0]); v.play(); } };
 
         const ctx = document.getElementById('c').getContext('2d', { willReadFrequently: true });
         
         function processFrame() {
-            if (!v.paused && !v.ended) {
+            // Only process if video is ready (either local file or stream)
+            if (v.readyState >= 2 && !v.paused && !v.ended) {
                 if (state.syncMode === 'dot') {
                     ctx.drawImage(v, 0, 0, 64, 64);
                     const p = ctx.getImageData(Math.floor(state.targetX * 63), Math.floor(state.targetY * 63), 1, 1).data;
@@ -226,14 +258,20 @@
                     state.targetRGB = { r: tr/64, g: tg/64, b: tb/64 };
                 }
                 
-                // Smooth Interpolation
-                state.currentRGB.r = lerp(state.currentRGB.r, state.targetRGB.r * state.boost, state.smoothing);
-                state.currentRGB.g = lerp(state.currentRGB.g, state.targetRGB.g * state.boost, state.smoothing);
-                state.currentRGB.b = lerp(state.currentRGB.b, state.targetRGB.b * state.boost, state.smoothing);
+                // Color Smoothing
+                state.currentRGB.r = lerp(state.currentRGB.r, state.targetRGB.r, state.smoothing);
+                state.currentRGB.g = lerp(state.currentRGB.g, state.targetRGB.g, state.smoothing);
+                state.currentRGB.b = lerp(state.currentRGB.b, state.targetRGB.b, state.smoothing);
 
-                const r = Math.min(255, state.currentRGB.r);
-                const g = Math.min(255, state.currentRGB.g);
-                const b = Math.min(255, state.currentRGB.b);
+                // Improved Boost (Actually affects brightness + saturation)
+                let r = state.currentRGB.r;
+                let g = state.currentRGB.g;
+                let b = state.currentRGB.b;
+
+                // Scale up brightness while preserving color ratio
+                r = Math.min(255, r * state.boost);
+                g = Math.min(255, g * state.boost);
+                b = Math.min(255, b * state.boost);
 
                 const hex = "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1).toUpperCase();
                 document.getElementById('color-prev').style.backgroundColor = hex;
@@ -256,6 +294,14 @@
             requestAnimationFrame(processFrame);
         }
         processFrame();
+
+        // Key Shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'f') {
+                if (!document.fullscreenElement) wrapper.requestFullscreen().catch(() => {});
+                else document.exitFullscreen();
+            }
+        });
     </script>
 </body>
 </html>
